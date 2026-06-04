@@ -1,0 +1,786 @@
+<Window x:Class="AutoCode.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:ctl="clr-namespace:AutoCode.Desktop.Controls"
+        xmlns:vm="clr-namespace:AutoCode.Desktop.ViewModels"
+        mc:Ignorable="d"
+        x:Name="RootWindow"
+        Title="AutoCode Studio"
+        Width="1320" Height="840" MinWidth="1080" MinHeight="720"
+        WindowStyle="None"
+        Icon="Assets/bvrai-logo.png"
+        Background="{DynamicResource SurfaceBrush}"
+        Foreground="{DynamicResource TextBrush}"
+        FontFamily="{DynamicResource UiFontFamily}"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="38"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================= TITLE BAR ============================= -->
+        <Border Grid.Row="0" Background="{DynamicResource TitlebarBrush}"
+                BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Image Source="pack://application:,,,/AutoCode.Desktop;component/Assets/bvrai-logo.png"
+                           Width="23" Height="23" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="AutoCode Studio" Margin="8,0,0,0" VerticalAlignment="Center"
+                               FontSize="12.5" FontWeight="Medium" Foreground="{DynamicResource TitlebarTextBrush}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+
+                    <!-- ===== toggle cluster: theme · font size · keep-awake ===== -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+
+                        <!-- theme -->
+                        <Button Style="{StaticResource TitleToggleStyle}" VerticalAlignment="Center"
+                                Click="ThemeToggle_Click" ToolTip="Toggle theme"
+                                AutomationProperties.AutomationId="ThemeToggle">
+                            <Grid Width="18" Height="18">
+                                <ctl:IconGlyph Geometry="{StaticResource IconMoon}" Width="18" Height="18" Visibility="{Binding IsDark, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                                <ctl:IconGlyph Geometry="{StaticResource IconSun}" Width="18" Height="18" Visibility="{Binding IsDark, Converter={StaticResource BoolToVis}}"/>
+                            </Grid>
+                        </Button>
+
+                        <Border Width="1" Height="18" Background="{DynamicResource BorderBrush2}" VerticalAlignment="Center" Margin="3,0"/>
+
+                        <!-- font size (small A / large A segmented toggle) -->
+                        <Button Style="{StaticResource TitleToggleStyle}" VerticalAlignment="Center"
+                                Click="FontSizeToggle_Click" AutomationProperties.AutomationId="FontSizeToggle">
+                            <Button.ToolTip>
+                                <ToolTip>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Increase text size"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
+                                                        <Setter Property="Text" Value="Decrease text size"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </ToolTip>
+                            </Button.ToolTip>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- small A: active when text is at normal size -->
+                                <Border Padding="3,1" Margin="0,0,1,0" CornerRadius="{StaticResource RadiusChip}" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="A" FontSize="10" FontWeight="Bold" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                                <!-- large A: active when text is enlarged -->
+                                <Border Padding="3,1" CornerRadius="{StaticResource RadiusChip}" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="A" FontSize="15" FontWeight="Bold" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <Border Width="1" Height="18" Background="{DynamicResource BorderBrush2}" VerticalAlignment="Center" Margin="3,0"/>
+
+                        <!-- keep computer awake -->
+                        <Button Style="{StaticResource TitleToggleStyle}" VerticalAlignment="Center"
+                                Click="KeepAwakeToggle_Click" AutomationProperties.AutomationId="KeepAwakeToggle">
+                            <Button.ToolTip>
+                                <ToolTip>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Keep computer awake — currently off"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
+                                                        <Setter Property="Text" Value="Keep computer awake — currently on"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </ToolTip>
+                            </Button.ToolTip>
+                            <Border Padding="5,3" CornerRadius="{StaticResource RadiusChip}" VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <ctl:IconGlyph Width="15" Height="15" Geometry="{StaticResource IconBolt}" Filled="True">
+                                    <ctl:IconGlyph.Style>
+                                        <Style TargetType="ctl:IconGlyph">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ctl:IconGlyph.Style>
+                                </ctl:IconGlyph>
+                            </Border>
+                        </Button>
+
+                    </StackPanel>
+
+                    <Button x:Name="MinButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="Minimize_Click" ToolTip="Minimize">
+                        <ctl:IconGlyph Geometry="{StaticResource IconMin}" Width="16" Height="16"/>
+                    </Button>
+                    <Button x:Name="MaxButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="MaximizeRestore_Click" ToolTip="Maximize">
+                        <ctl:IconGlyph x:Name="MaxIcon" Geometry="{StaticResource IconMax}" Width="14" Height="14"/>
+                    </Button>
+                    <Button x:Name="CloseButton" Height="38" Style="{StaticResource WinCloseButtonStyle}" Click="CloseWindow_Click" ToolTip="Close">
+                        <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="15" Height="15"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============================= BODY ============================= -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SidebarCol" Width="262"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="PanelCol" Width="0"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ===== SIDEBAR ===== -->
+            <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource Surface2Brush}"
+                    BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,1,0" ClipToBounds="True">
+                <Grid Width="262" HorizontalAlignment="Left">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- top -->
+                    <StackPanel Margin="12,12,12,6">
+                        <Button Style="{StaticResource NewSessionButtonStyle}" Click="NewSession_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="16" Height="16" Margin="0,0,9,0"/>
+                                <TextBlock Text="New session" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="SearchToggle_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconSearch}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="Search" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBox x:Name="SearchBox" Visibility="Collapsed" Margin="0,4,0,0" Padding="8,5"
+                                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
+                                 Foreground="{DynamicResource TextBrush}" FontSize="13" TextChanged="SearchBox_TextChanged"/>
+                    </StackPanel>
+
+                    <!-- scroll: projects -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,0,8,4">
+                        <StackPanel>
+                            <TextBlock Text="PROJECTS" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                            <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProjectNode}">
+                                        <StackPanel>
+                                            <Button Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ctl:IconGlyph x:Name="PChevIcon" Geometry="{StaticResource IconChevron}" Width="13" Height="13" Margin="0,0,7,0"
+                                                                   Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
+                                                                   RenderTransformOrigin="0.5,0.5"/>
+                                                    <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="15" Height="15" Margin="0,0,8,0"
+                                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                               FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextBrush}"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <ItemsControl ItemsSource="{Binding Sessions}"
+                                                          Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:SessionNode}">
+                                                        <Button Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}" Command="{Binding OpenCommand}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                                           FontSize="13" VerticalAlignment="Center"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding RelativeTime}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                                           FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"
+                                                                           Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                                                                <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center"
+                                                                         Fill="{DynamicResource AccentBrush}"
+                                                                         Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                <Setter TargetName="PChevIcon" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- footer -->
+                    <StackPanel Grid.Row="2" Margin="0">
+                        <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,1,0,0" Padding="10">
+                            <StackPanel>
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
+                                        BorderThickness="1" CornerRadius="10" Padding="11,10">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock Text="Context" HorizontalAlignment="Left" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource Text2Brush}"/>
+                                            <TextBlock Text="{Binding UsagePercentText}" HorizontalAlignment="Right" FontSize="11.5" Foreground="{DynamicResource Text3Brush}"/>
+                                        </Grid>
+                                        <Border Height="5" CornerRadius="3" Background="{DynamicResource Surface4Brush}" Margin="0,8,0,0" ClipToBounds="True">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="{Binding UsageFill}"/>
+                                                    <ColumnDefinition Width="{Binding UsageRest}"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" CornerRadius="3" Background="{DynamicResource UsageBarFillBrush}"/>
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                                            <TextBlock Text="in" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
+                                            <TextBlock Text="{Binding UsageInText}" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                                            <TextBlock Text="out" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
+                                            <TextBlock Text="{Binding UsageOutText}" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                <Button x:Name="SettingsButton" Style="{StaticResource SidebarItemStyle}" Margin="0,8,0,0" Click="SettingsButton_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconGear}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                        <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Account: signed-out -->
+                                <Button Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="SignIn_Click"
+                                        Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                        <TextBlock Text="Sign in" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Account: signed-in chip -->
+                                <Button x:Name="AccountChip" Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="AccountChip_Click"
+                                        Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Grid.Column="0" Width="24" Height="24" Margin="0,0,9,0">
+                                            <Ellipse Fill="{DynamicResource Surface4Brush}"/>
+                                            <TextBlock Text="{Binding AccountInitial}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"
+                                                       Visibility="{Binding AccountPhotoUrl, Converter={StaticResource NullToVis}, ConverterParameter=invert}"/>
+                                            <Ellipse Visibility="{Binding AccountPhotoUrl, Converter={StaticResource NullToVis}}">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{Binding AccountPhotoUrl}"/>
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                        </Grid>
+                                        <TextBlock Grid.Column="1" Text="{Binding AccountEmail}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12.5"/>
+                                        <ctl:IconGlyph Grid.Column="2" Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== MAIN COLUMN ===== -->
+            <Grid Grid.Column="1" Background="{DynamicResource SurfaceBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="52"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- top bar -->
+                <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1">
+                    <Grid Margin="8,0,12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Click="SidebarToggle_Click" ToolTip="Toggle sidebar">
+                            <ctl:IconGlyph Geometry="{StaticResource IconMenu}" Width="18" Height="18"/>
+                        </Button>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+                            <TextBlock Text="{Binding ChatTitle}" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="3" Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,8,0"
+                                ToolTip="{Binding ProjectRoot}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="14" Height="14" Margin="0,0,7,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ProjectRootShort}" VerticalAlignment="Center" FontFamily="{DynamicResource MonoFontFamily}" MaxWidth="240" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="4" x:Name="WorkspaceToggle" Style="{StaticResource IconButtonStyle}" Click="WorkspaceToggle_Click" ToolTip="Workspace">
+                            <ctl:IconGlyph Geometry="{StaticResource IconPanel}" Width="18" Height="18"/>
+                        </Button>
+
+                        <Button Grid.Column="5" x:Name="RunToggle" Style="{StaticResource IconButtonStyle}" Click="RunToggle_Click" ToolTip="Run">
+                            <Grid>
+                                <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="18" Height="18"/>
+                                <Ellipse Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"
+                                         Fill="{DynamicResource AmberBrush}" Stroke="{DynamicResource SurfaceBrush}" StrokeThickness="1.5"
+                                         Visibility="{Binding ShowRunBadgeTopbar, Converter={StaticResource BoolToVis}}"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Grid.Column="6" x:Name="SessionMenuButton" Style="{StaticResource IconButtonStyle}" Click="SessionMenu_Click" ToolTip="Session menu">
+                            <ctl:IconGlyph Geometry="{StaticResource IconDots}" Width="18" Height="18" Filled="True"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- conversation -->
+                <ScrollViewer Grid.Row="1" x:Name="ChatScroll" VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <ItemsControl x:Name="ChatItems" ItemsSource="{Binding Conversation}" MaxWidth="760" HorizontalAlignment="Stretch" Margin="28,26,28,8">
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Margin" Value="0,0,0,18"/>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                        </ItemsControl>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- composer -->
+                <Grid Grid.Row="2" Margin="16,8,16,16">
+                    <Border MaxWidth="760" HorizontalAlignment="Stretch" x:Name="ComposerBorder"
+                            Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
+                            BorderThickness="1" CornerRadius="16" Effect="{DynamicResource CardShadowSoft}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentLineBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <TextBox x:Name="PromptBox" Background="Transparent" BorderThickness="0"
+                                         FontSize="{DynamicResource BodyFontSize}" Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
+                                         AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                                         Padding="16,14,16,14" KeyDown="PromptBox_KeyDown" TextChanged="PromptBox_TextChanged"/>
+                                <TextBlock IsHitTestVisible="False" Text="Ask for follow-up changes" Margin="17,14,0,0"
+                                           FontSize="{DynamicResource BodyFontSize}" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Top">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=PromptBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <Grid Grid.Row="1" Margin="10,0,10,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="Attach (coming soon)">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button x:Name="ModePill" AutomationProperties.AutomationId="ModePill" Style="{StaticResource PillButtonStyle}" Tag="{Binding ModeWire}" Margin="7,0,0,0" Click="ModePill_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{Binding ModeGlyph}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding ModeLabel}" VerticalAlignment="Center"/>
+                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="ModelPill" Style="{StaticResource PillButtonStyle}" Margin="7,0,0,0" Click="ModelPill_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                                            <TextBlock Text="{Binding ModelLabel}" VerticalAlignment="Center"/>
+                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="Voice (coming soon)">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconMic}" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button x:Name="SendButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Send_Click" ToolTip="Send"
+                                            Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconArrowUp}" Width="17" Height="17" Foreground="{DynamicResource AccentInkBrush}"/>
+                                    </Button>
+                                    <Button x:Name="StopButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Stop_Click" ToolTip="Stop"
+                                            Background="{DynamicResource Text2Brush}"
+                                            Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconStop}" Width="15" Height="15" Foreground="White"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ===== SIDE PANEL ===== -->
+            <Border x:Name="SidePanel" Grid.Column="2" Background="{DynamicResource Surface2Brush}"
+                    BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1,0,0,0" ClipToBounds="True">
+                <Grid Width="372" HorizontalAlignment="Left">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- panel header -->
+                    <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1">
+                        <Grid Margin="10,9">
+                            <Border HorizontalAlignment="Left" Background="{DynamicResource Surface3Brush}" CornerRadius="9" Padding="3">
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton x:Name="WorkspaceTab" Style="{StaticResource SpTabStyle}" Click="WorkspaceTab_Click"
+                                                  IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=workspace, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Workspace" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="RunTab" Style="{StaticResource SpTabStyle}" Margin="2,0,0,0" Click="RunTab_Click"
+                                                  IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=run, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Run" VerticalAlignment="Center"/>
+                                            <Ellipse Width="6" Height="6" Margin="6,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
+                                                     Visibility="{Binding HasApproval, Converter={StaticResource BoolToVis}}"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Border>
+                            <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right" Click="ClosePanel_Click" ToolTip="Close">
+                                <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- panel body -->
+                    <Grid Grid.Row="1">
+                        <!-- workspace -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
+                            <ScrollViewer.Style>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelTab}" Value="workspace">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ScrollViewer.Style>
+                            <StackPanel>
+                                <TextBlock Text="SESSION" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="id" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SessionId}" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="model" Margin="0,3,0,0" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SessionModel}" Margin="0,3,0,0" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="root" Margin="0,3,0,0" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SessionRoot}" Margin="0,3,0,0" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
+                                </Grid>
+                                <TextBlock Text="FILES" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
+                                <ItemsControl x:Name="FileTree" ItemsSource="{Binding Files}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- run -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
+                            <ScrollViewer.Style>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelTab}" Value="run">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ScrollViewer.Style>
+                            <StackPanel>
+                                <!-- approval card -->
+                                <Border x:Name="ApprovalPanel" DataContext="{Binding Approval}"
+                                        Background="{DynamicResource AmberBgBrush}" BorderBrush="{DynamicResource AmberLineBrush}"
+                                        BorderThickness="1" CornerRadius="12" Padding="13" Margin="0,0,0,16"
+                                        Visibility="{Binding RelativeSource={RelativeSource Self}, Path=DataContext, Converter={StaticResource NullToVis}}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconAlert}" Width="16" Height="16" Margin="0,0,8,0" Foreground="{DynamicResource AmberBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Pending approval" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Margin="0,9,0,8" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap">
+                                            <Run Text="{Binding ToolName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><Run Text="  "/><Run Text="{Binding Target, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="8" MaxHeight="190">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
+                                                <ItemsControl ItemsSource="{Binding PreviewLines}"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                        <TextBox x:Name="RevisionBox" Margin="0,10,0,0" Padding="10,8" MinHeight="46" AcceptsReturn="True" TextWrapping="Wrap"
+                                                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" Foreground="{DynamicResource TextBrush}"
+                                                 FontSize="12.5" ToolTip="Optional revision guidance…"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                            <Button Style="{StaticResource DangerButtonStyle}" Content="Decline" Click="DeclineApproval_Click"/>
+                                            <Button Style="{StaticResource SmallGhostButtonStyle}" Content="Revise" Margin="7,0,0,0" Click="ReviseApproval_Click"/>
+                                            <Button Style="{StaticResource PrimaryButtonStyle}" Content="Accept" Margin="7,0,0,0" Click="AcceptApproval_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- resolved status -->
+                                <TextBlock Text="{Binding ResolvedStatus}" Margin="0,0,0,14" FontSize="12.5" Foreground="{DynamicResource Text2Brush}"
+                                           Visibility="{Binding HasResolvedStatus, Converter={StaticResource BoolToVis}}"/>
+
+                                <TextBlock Text="TOOL TIMELINE" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
+                                <ItemsControl x:Name="TimelineList" ItemsSource="{Binding Timeline}"/>
+                                <TextBlock Text="No tools run yet." HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}"
+                                           Visibility="{Binding HasItems, ElementName=TimelineList, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============================= POPUPS ============================= -->
+        <Popup x:Name="ModePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModePill}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
+                <StackPanel>
+                    <TextBlock Text="MODE" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="default" Click="ModeMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Default"/>
+                                <TextBlock Text="Edits &amp; shell require approval" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="autocode" Click="ModeMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconBolt}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Full access"/>
+                                <TextBlock Text="Auto-approve file edits &amp; shell" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="planning" Click="ModeMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconPlan}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Plan only"/>
+                                <TextBlock Text="Read-only — no mutations" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="admin" Click="ModeMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconCrown}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Admin"/>
+                                <TextBlock Text="Unrestricted, incl. system ops" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="ModelPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModelPill}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
+                <StackPanel>
+                    <TextBlock Text="PROVIDER" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="anthropic" Click="ProviderMenu_Click" Content="anthropic"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openai" Click="ProviderMenu_Click" Content="openai"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="xai" Click="ProviderMenu_Click" Content="xai"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openrouter" Click="ProviderMenu_Click" Content="openrouter"/>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    <TextBlock x:Name="ModelMenuLabel" Text="MODEL" Style="{StaticResource CapsLabel}" Margin="10,4,10,4"/>
+                    <StackPanel x:Name="ModelListPanel"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="SettingsPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=SettingsButton}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="220" Margin="0,0,0,6">
+                <StackPanel>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="ByokMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconKey}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="Bring your own keys" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="ProxyMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconLink}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="Proxy access" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="AboutMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="About AutoCode Studio" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="AccountPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=AccountChip}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
+                <StackPanel>
+                    <StackPanel Margin="10,8,10,8">
+                        <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding SubscriptionLabel}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,0,6,4"/>
+                    <Button x:Name="UseProxyMenuItem" Style="{StaticResource MenuItemButtonStyle}" Click="UseProxyToggle_Click"
+                            IsEnabled="{Binding ProxyToggleEnabled}">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph x:Name="UseProxyCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
+                            <TextBlock Text="Use Automax proxy" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="Subscribe at bvrai.ca to use the proxy" Margin="35,0,10,6" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"
+                               Visibility="{Binding ProxyToggleEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,0,6,4"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="SignOut_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="Sign out" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="SessionPopup" StaysOpen="False" Placement="Bottom" PlacementTarget="{Binding ElementName=SessionMenuButton}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="200" Margin="0,6,0,0">
+                <StackPanel>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="NewSession_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="New session" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="ClearConversation_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconUndo}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="Clear conversation" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</Window>

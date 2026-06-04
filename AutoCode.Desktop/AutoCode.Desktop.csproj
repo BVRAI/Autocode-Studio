@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutoCode.Engine\AutoCode.Engine.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\automax-dark.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\automax-dark.ico" />
+    <Resource Include="Assets\automax-dark.png" />
+    <Resource Include="Assets\bvrai-logo.png" />
+    <Resource Include="Assets\automax-light.ico" />
+    <Resource Include="Assets\automax-light.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3967.48" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
+  </ItemGroup>
+
+</Project>

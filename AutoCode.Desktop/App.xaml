@@ -1,0 +1,20 @@
+﻿<Application x:Class="AutoCode.Desktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AutoCode.Desktop"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Themes/Tokens.Shared.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Themes/Light.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Icons.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Styles/Converters.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Styles/IconGlyph.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Styles/Controls.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Styles/Conversation.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/AutoCode.Desktop;component/Styles/SidePanel.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,54 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ============================================================
+         Theme-INVARIANT design tokens.
+         Colors that change per theme live in Light.xaml / Dark.xaml.
+         ============================================================ -->
+
+    <!-- Fonts: Geist -> Segoe UI Variable / Segoe UI ; Geist Mono -> Cascadia -->
+    <FontFamily x:Key="UiFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="MonoFontFamily">Cascadia Code, Cascadia Mono, Consolas</FontFamily>
+
+    <!-- Body text size. Scaled at runtime by the title-bar font toggle (ApplyTextScale
+         sets Application.Current.Resources["BodyFontSize"] = 14.5 * scale). -->
+    <sys:Double x:Key="BodyFontSize">14.5</sys:Double>
+
+    <!-- Corner radii (px) -->
+    <CornerRadius x:Key="RadiusLg">16</CornerRadius>
+    <CornerRadius x:Key="Radius">12</CornerRadius>
+    <CornerRadius x:Key="RadiusSm">8</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">9</CornerRadius>
+    <CornerRadius x:Key="RadiusBtn">10</CornerRadius>
+    <CornerRadius x:Key="RadiusIcon">9</CornerRadius>
+    <CornerRadius x:Key="RadiusChip">6</CornerRadius>
+
+    <!-- Accent is constant across themes -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#2f6fe0"/>
+    <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff"/>
+    <SolidColorBrush x:Key="CloseHoverBrush" Color="#e5443b"/>
+
+    <!-- Accent gradients (logo chip, usage bar) -->
+    <LinearGradientBrush x:Key="LogoChipBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#2f6fe0" Offset="0"/>
+        <GradientStop Color="#6d54e0" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="UsageBarFillBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#2f6fe0" Offset="0"/>
+        <GradientStop Color="#6d54e0" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Shadows -->
+    <DropShadowEffect x:Key="WindowShadow" BlurRadius="48" ShadowDepth="14" Direction="270" Opacity="0.32" Color="#282622"/>
+    <DropShadowEffect x:Key="MenuShadow" BlurRadius="34" ShadowDepth="10" Direction="270" Opacity="0.26" Color="#000000"/>
+    <DropShadowEffect x:Key="ModalShadow" BlurRadius="56" ShadowDepth="16" Direction="270" Opacity="0.38" Color="#000000"/>
+    <DropShadowEffect x:Key="CardShadowSoft" BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.06" Color="#000000"/>
+    <DropShadowEffect x:Key="TabShadow" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="0.10" Color="#000000"/>
+
+    <!-- Animation durations -->
+    <Duration x:Key="SidebarDuration">0:0:0.22</Duration>
+    <Duration x:Key="PanelDuration">0:0:0.24</Duration>
+    <Duration x:Key="FastDuration">0:0:0.16</Duration>
+
+</ResourceDictionary>

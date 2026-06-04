@@ -1,0 +1,68 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===================== DARK THEME ===================== -->
+
+    <!-- Title bar -->
+    <SolidColorBrush x:Key="TitlebarBrush" Color="#26241f"/>
+    <SolidColorBrush x:Key="TitlebarTextBrush" Color="#cdc8be"/>
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#1c1b19"/>
+    <SolidColorBrush x:Key="Surface2Brush" Color="#201f1c"/>
+    <SolidColorBrush x:Key="Surface3Brush" Color="#262420"/>
+    <SolidColorBrush x:Key="Surface4Brush" Color="#2d2b26"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="#0DFFFCF5"/>
+    <SolidColorBrush x:Key="HoverStrongBrush" Color="#17FFFCF5"/>
+
+    <!-- Borders -->
+    <SolidColorBrush x:Key="BorderBrush2" Color="#322f2a"/>
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#3d3933"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextBrush" Color="#ece8e0"/>
+    <SolidColorBrush x:Key="Text2Brush" Color="#b5b0a6"/>
+    <SolidColorBrush x:Key="Text3Brush" Color="#837f76"/>
+    <SolidColorBrush x:Key="TextFaintBrush" Color="#635f58"/>
+
+    <!-- Bubbles / code -->
+    <SolidColorBrush x:Key="UserBubbleBrush" Color="#2a2823"/>
+    <SolidColorBrush x:Key="CodeBgBrush" Color="#2a2823"/>
+    <SolidColorBrush x:Key="CodeTextBrush" Color="#d6d1c7"/>
+
+    <!-- Accent (soft/line precomputed; base accent lives in Tokens.Shared) -->
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#212F49"/>
+    <SolidColorBrush x:Key="AccentLineBrush" Color="#254173"/>
+
+    <!-- Semantic -->
+    <SolidColorBrush x:Key="GreenBrush" Color="#1a7f47"/>
+    <SolidColorBrush x:Key="GreenBgBrush" Color="#16271c"/>
+    <SolidColorBrush x:Key="RedBrush" Color="#c4453a"/>
+    <SolidColorBrush x:Key="RedBgBrush" Color="#2c1916"/>
+    <SolidColorBrush x:Key="AmberBrush" Color="#b06a14"/>
+    <SolidColorBrush x:Key="AmberBgBrush" Color="#2c2113"/>
+    <SolidColorBrush x:Key="AmberLineBrush" Color="#5a431f"/>
+    <SolidColorBrush x:Key="AdminPillBorderBrush" Color="#572A25"/>
+    <SolidColorBrush x:Key="DangerBorderBrush" Color="#4E2823"/>
+
+    <!-- Scrim -->
+    <SolidColorBrush x:Key="ScrimBrush" Color="#8C000000"/>
+
+    <!-- ===================== Legacy aliases ===================== -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#201f1c"/>
+    <SolidColorBrush x:Key="ChromeBrush" Color="#1c1b19"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#201f1c"/>
+    <SolidColorBrush x:Key="PanelAltBrush" Color="#262420"/>
+    <SolidColorBrush x:Key="BorderBrushSoft" Color="#322f2a"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#b5b0a6"/>
+    <SolidColorBrush x:Key="AssistantBubbleBrush" Color="#1c1b19"/>
+    <SolidColorBrush x:Key="ErrorBubbleBrush" Color="#2c1916"/>
+    <SolidColorBrush x:Key="WarningBubbleBrush" Color="#2c2113"/>
+    <SolidColorBrush x:Key="SuccessBubbleBrush" Color="#16271c"/>
+    <SolidColorBrush x:Key="InputBrush" Color="#262420"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#3d3933"/>
+    <SolidColorBrush x:Key="MenuRailBrush" Color="#16140D"/>
+    <SolidColorBrush x:Key="MenuRailTextBrush" Color="#E9DFBE"/>
+    <SolidColorBrush x:Key="MenuRailMutedBrush" Color="#A89971"/>
+
+</ResourceDictionary>
