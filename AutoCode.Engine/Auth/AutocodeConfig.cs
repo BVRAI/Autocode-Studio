@@ -39,6 +39,12 @@ public sealed class AutocodeConfig
 
     public bool KeepAwakeEnabled { get; set; }
 
+    /// <summary>Voice-to-text backend selection as "prefix:model" (e.g. "openai:whisper-1"). Null = auto-select best available.</summary>
+    public string? TranscriptionProvider { get; set; }
+
+    /// <summary>When true, a finished voice transcript is submitted immediately; otherwise it is inserted into the prompt box for review.</summary>
+    public bool AutoSubmitVoice { get; set; }
+
     public WebToolsConfig WebTools { get; set; } = new();
 
     public ModelConfig ToModelConfig() =>

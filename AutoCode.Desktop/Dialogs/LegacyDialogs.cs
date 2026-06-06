@@ -15,6 +15,8 @@ public sealed class ByokDialog : ModalWindow
     private readonly PasswordBox _openAi;
     private readonly PasswordBox _xai;
     private readonly PasswordBox _openRouter;
+    private readonly PasswordBox _groq;
+    private readonly PasswordBox _google;
     private readonly PasswordBox _brave;
 
     public ByokDialog(AutocodeConfig config)
@@ -24,12 +26,16 @@ public sealed class ByokDialog : ModalWindow
         _openAi = MakePasswordBox(config.ApiKeys.TryGetValue("openai", out var o) ? o : null);
         _xai = MakePasswordBox(config.ApiKeys.TryGetValue("xai", out var x) ? x : null);
         _openRouter = MakePasswordBox(config.ApiKeys.TryGetValue("openrouter", out var r) ? r : null);
+        _groq = MakePasswordBox(config.ApiKeys.TryGetValue("groq", out var g) ? g : null);
+        _google = MakePasswordBox(config.ApiKeys.TryGetValue("google", out var gg) ? gg : null);
         _brave = MakePasswordBox(config.ApiKeys.TryGetValue("brave", out var b) ? b : null);
 
         AddField("Anthropic", "ANTHROPIC_API_KEY", _anthropic);
         AddField("OpenAI", "OPENAI_API_KEY", _openAi);
         AddField("xAI", "XAI_API_KEY", _xai);
         AddField("OpenRouter", "OPENROUTER_API_KEY", _openRouter);
+        AddField("Groq (voice)", "GROQ_API_KEY", _groq);
+        AddField("Google · Gemini (voice)", "GOOGLE_API_KEY", _google);
         AddField("Brave Search", "BRAVE_API_KEY", _brave);
 
         AddFooterButton("Cancel", primary: false).Click += (_, _) => { DialogResult = false; Close(); };
@@ -42,6 +48,8 @@ public sealed class ByokDialog : ModalWindow
         SetKey(config, "openai", _openAi.Password);
         SetKey(config, "xai", _xai.Password);
         SetKey(config, "openrouter", _openRouter.Password);
+        SetKey(config, "groq", _groq.Password);
+        SetKey(config, "google", _google.Password);
         SetKey(config, "brave", _brave.Password);
     }
 

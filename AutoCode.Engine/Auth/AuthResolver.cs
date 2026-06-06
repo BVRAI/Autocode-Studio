@@ -75,6 +75,7 @@ public sealed class AuthResolver
             "openai" => "OPENAI_API_KEY",
             "xai" => "XAI_API_KEY",
             "openrouter" => "OPENROUTER_API_KEY",
+            "groq" => "GROQ_API_KEY",
             "google" => "GOOGLE_API_KEY",
             "brave" => "BRAVE_API_KEY",
             _ => null

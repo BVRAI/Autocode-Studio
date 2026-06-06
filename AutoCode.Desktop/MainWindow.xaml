@@ -327,40 +327,6 @@
                                         <TextBlock Text="Settings" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-
-                                <!-- Account: signed-out -->
-                                <Button Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="SignIn_Click"
-                                        Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                                        <TextBlock Text="Sign in" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- Account: signed-in chip -->
-                                <Button x:Name="AccountChip" Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="AccountChip_Click"
-                                        Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid Grid.Column="0" Width="24" Height="24" Margin="0,0,9,0">
-                                            <Ellipse Fill="{DynamicResource Surface4Brush}"/>
-                                            <TextBlock Text="{Binding AccountInitial}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"
-                                                       Visibility="{Binding AccountPhotoUrl, Converter={StaticResource NullToVis}, ConverterParameter=invert}"/>
-                                            <Ellipse Visibility="{Binding AccountPhotoUrl, Converter={StaticResource NullToVis}}">
-                                                <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{Binding AccountPhotoUrl}"/>
-                                                </Ellipse.Fill>
-                                            </Ellipse>
-                                        </Grid>
-                                        <TextBlock Grid.Column="1" Text="{Binding AccountEmail}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12.5"/>
-                                        <ctl:IconGlyph Grid.Column="2" Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Button>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -498,8 +464,22 @@
                                     </Button>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="Voice (coming soon)">
+                                    <Button x:Name="MicButton" AutomationProperties.AutomationId="MicButton" Click="MicButton_Click"
+                                            ToolTip="{Binding VoiceTooltip}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource ComposerIconButtonStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource RedBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
                                         <ctl:IconGlyph Geometry="{StaticResource IconMic}" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button x:Name="VoiceCaretButton" AutomationProperties.AutomationId="VoiceCaretButton" Width="22"
+                                            Style="{StaticResource ComposerIconButtonStyle}" Click="VoiceCaret_Click" ToolTip="Voice settings">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconChevronUp}" Width="11" Height="11"/>
                                     </Button>
                                     <Button x:Name="SendButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Send_Click" ToolTip="Send"
                                             Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
@@ -710,9 +690,59 @@
             </Border>
         </Popup>
 
-        <Popup x:Name="SettingsPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=SettingsButton}" AllowsTransparency="True" PopupAnimation="Fade">
-            <Border Style="{StaticResource MenuCardBorder}" MinWidth="220" Margin="0,0,0,6">
+        <Popup x:Name="VoicePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=VoiceCaretButton}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="260" Margin="0,0,0,6">
                 <StackPanel>
+                    <TextBlock Text="VOICE BACKEND" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <StackPanel x:Name="VoiceListPanel"/>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    <Button x:Name="AutoSubmitItem" Style="{StaticResource MenuItemButtonStyle}" Click="AutoSubmitToggle_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph x:Name="AutoSubmitCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
+                            <TextBlock Text="Auto-submit after dictation" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="SettingsPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=SettingsButton}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
+                <StackPanel>
+                    <!-- Account: signed-out -->
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="SignIn_Click"
+                            Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="Sign in" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Account: signed-in -->
+                    <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Margin="10,8,10,8">
+                            <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding SubscriptionLabel}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,0,6,4"/>
+                        <Button x:Name="UseProxyMenuItem" Style="{StaticResource MenuItemButtonStyle}" Click="UseProxyToggle_Click"
+                                IsEnabled="{Binding ProxyToggleEnabled}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph x:Name="UseProxyCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
+                                <TextBlock Text="Use Automax proxy" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="Subscribe at bvrai.ca to use the proxy" Margin="35,0,10,6" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"
+                                   Visibility="{Binding ProxyToggleEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                        <Button Style="{StaticResource MenuItemButtonStyle}" Click="SignOut_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="Sign out" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="ByokMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconKey}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
@@ -730,34 +760,6 @@
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
                             <TextBlock Text="About AutoCode Studio" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-        </Popup>
-
-        <Popup x:Name="AccountPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=AccountChip}" AllowsTransparency="True" PopupAnimation="Fade">
-            <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
-                <StackPanel>
-                    <StackPanel Margin="10,8,10,8">
-                        <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding SubscriptionLabel}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,0,6,4"/>
-                    <Button x:Name="UseProxyMenuItem" Style="{StaticResource MenuItemButtonStyle}" Click="UseProxyToggle_Click"
-                            IsEnabled="{Binding ProxyToggleEnabled}">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph x:Name="UseProxyCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
-                            <TextBlock Text="Use Automax proxy" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    <TextBlock Text="Subscribe at bvrai.ca to use the proxy" Margin="35,0,10,6" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"
-                               Visibility="{Binding ProxyToggleEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
-                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,0,6,4"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="SignOut_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="Sign out" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

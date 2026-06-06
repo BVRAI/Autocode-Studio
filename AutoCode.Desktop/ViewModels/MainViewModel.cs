@@ -6,6 +6,14 @@ using AutoCode.Engine.Agent;
 
 namespace AutoCode.Desktop.ViewModels;
 
+/// <summary>Lifecycle of a voice-dictation turn.</summary>
+public enum VoiceState
+{
+    Idle,
+    Recording,
+    Transcribing,
+}
+
 /// <summary>Bindable UI state for the main window. Engine interaction stays in code-behind.</summary>
 public sealed class MainViewModel : ObservableObject
 {
@@ -133,6 +141,23 @@ public sealed class MainViewModel : ObservableObject
         get => _isLargeFont;
         set => Set(ref _isLargeFont, value);
     }
+
+    // ---- Voice (dictation) ----
+    private VoiceState _voice = VoiceState.Idle;
+    public VoiceState Voice
+    {
+        get => _voice;
+        set { if (Set(ref _voice, value)) { Raise(nameof(IsRecording)); Raise(nameof(VoiceTooltip)); } }
+    }
+
+    public bool IsRecording => _voice == VoiceState.Recording;
+
+    public string VoiceTooltip => _voice switch
+    {
+        VoiceState.Recording => "Stop & transcribe",
+        VoiceState.Transcribing => "Transcribing…",
+        _ => "Dictate (voice to text)",
+    };
 
     // ---- Account ----
     private bool _isSignedIn;
