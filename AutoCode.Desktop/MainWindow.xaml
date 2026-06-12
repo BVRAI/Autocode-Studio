@@ -11,7 +11,7 @@
         Title="AutoCode Studio"
         Width="1320" Height="840" MinWidth="1080" MinHeight="720"
         WindowStyle="None"
-        Icon="Assets/bvrai-logo.png"
+        Icon="Assets/bvrai-logo.ico"
         Background="{DynamicResource SurfaceBrush}"
         Foreground="{DynamicResource TextBrush}"
         FontFamily="{DynamicResource UiFontFamily}"
