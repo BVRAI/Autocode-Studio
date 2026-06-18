@@ -48,23 +48,4 @@
     <!-- Scrim -->
     <SolidColorBrush x:Key="ScrimBrush" Color="#571C1A16"/>
 
-    <!-- ===================== Legacy aliases =====================
-         Referenced by the pre-redesign MainWindow during transition.
-         Removed once the redesign no longer references them. -->
-    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#faf9f7"/>
-    <SolidColorBrush x:Key="ChromeBrush" Color="#ffffff"/>
-    <SolidColorBrush x:Key="PanelBrush" Color="#faf9f7"/>
-    <SolidColorBrush x:Key="PanelAltBrush" Color="#f3f1ee"/>
-    <SolidColorBrush x:Key="BorderBrushSoft" Color="#e7e4df"/>
-    <SolidColorBrush x:Key="MutedBrush" Color="#56534e"/>
-    <SolidColorBrush x:Key="AssistantBubbleBrush" Color="#ffffff"/>
-    <SolidColorBrush x:Key="ErrorBubbleBrush" Color="#fbecea"/>
-    <SolidColorBrush x:Key="WarningBubbleBrush" Color="#fdf2e2"/>
-    <SolidColorBrush x:Key="SuccessBubbleBrush" Color="#e7f4ec"/>
-    <SolidColorBrush x:Key="InputBrush" Color="#ffffff"/>
-    <SolidColorBrush x:Key="InputBorderBrush" Color="#d8d4ce"/>
-    <SolidColorBrush x:Key="MenuRailBrush" Color="#16140D"/>
-    <SolidColorBrush x:Key="MenuRailTextBrush" Color="#E9DFBE"/>
-    <SolidColorBrush x:Key="MenuRailMutedBrush" Color="#A89971"/>
-
 </ResourceDictionary>

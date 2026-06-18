@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using System.IO;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using AutoCode.Engine.Agent;
@@ -14,18 +14,117 @@ public enum VoiceState
     Transcribing,
 }
 
-/// <summary>Bindable UI state for the main window. Engine interaction stays in code-behind.</summary>
+/// <summary>
+/// App-level window state (theme, voice, account, sidebar, layout, the model picker) PLUS a façade
+/// over the active <see cref="WorkspaceSession"/>: per-session bound properties (Conversation, title,
+/// timeline, plan, usage, approval, …) forward to <see cref="Sessions"/>.Active, so the same XAML
+/// bindings follow whichever workspace is active. Switching active sessions is instant and preserves
+/// each session's live state.
+/// </summary>
 public sealed class MainViewModel : ObservableObject
 {
-    // ---- Commands wired by code-behind, reached from templates via DataContext.* ----
+    private static readonly ObservableCollection<ConversationBlock> EmptyConversation = [];
+    private static readonly ObservableCollection<TimelineItemVM> EmptyTimeline = [];
+    private static readonly ObservableCollection<PlanItemVM> EmptyPlan = [];
+    private static readonly ObservableCollection<FileNode> EmptyFiles = [];
+    private static readonly ObservableCollection<ChangeItem> EmptyChanges = [];
+
+    private WorkspaceSession? _relayHooked;
+
+    public MainViewModel()
+    {
+        Sessions.ActiveChanged += OnActiveChanged;
+    }
+
+    // ---- Commands wired by code-behind, reached from templates/panels via DataContext.* ----
     public RelayCommand? CopyCommand { get; set; }
     public RelayCommand? ReviewCommand { get; set; }
     public RelayCommand? OpenFileCommand { get; set; }
+    public RelayCommand? MergeCommand { get; set; }
+    public RelayCommand? AcceptApprovalCommand { get; set; }
+    public RelayCommand? DeclineApprovalCommand { get; set; }
+    public RelayCommand? ReviseApprovalCommand { get; set; }
+    public RelayCommand? ActivateSessionCommand { get; set; }
+    public RelayCommand? CloseSessionCommand { get; set; }
 
-    // ---- Conversation / timeline / files / sessions ----
-    public ObservableCollection<ConversationBlock> Conversation { get; } = [];
-    public ObservableCollection<TimelineItemVM> Timeline { get; } = [];
-    public ObservableCollection<FileNode> Files { get; } = [];
+    // Transient text for the approval "revise" box (bound two-way from the Run panel).
+    private string _revisionText = "";
+    public string RevisionText
+    {
+        get => _revisionText;
+        set => Set(ref _revisionText, value);
+    }
+
+    // ---- Sessions ----
+    public SessionManager Sessions { get; } = new();
+
+    public WorkspaceSession? Active => Sessions.Active;
+
+    private void OnActiveChanged(WorkspaceSession? session)
+    {
+        if (_relayHooked is not null)
+        {
+            _relayHooked.PropertyChanged -= OnActivePropertyChanged;
+        }
+
+        _relayHooked = session;
+        if (_relayHooked is not null)
+        {
+            _relayHooked.PropertyChanged += OnActivePropertyChanged;
+        }
+
+        // Refresh every façade binding to read the newly-active session.
+        Raise(string.Empty);
+    }
+
+    private void OnActivePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.PropertyName))
+        {
+            Raise(string.Empty);
+            return;
+        }
+
+        Raise(e.PropertyName);
+        if (e.PropertyName == nameof(WorkspaceSession.HasApproval))
+        {
+            Raise(nameof(ShowRunBadgeTopbar));
+        }
+    }
+
+    // ---- Per-session façade (forwards to Active) ----
+    public ObservableCollection<ConversationBlock> Conversation => Active?.Conversation ?? EmptyConversation;
+    public ObservableCollection<TimelineItemVM> Timeline => Active?.Timeline ?? EmptyTimeline;
+    public ObservableCollection<PlanItemVM> Plan => Active?.Plan ?? EmptyPlan;
+    public ObservableCollection<FileNode> Files => Active?.Files ?? EmptyFiles;
+    public ObservableCollection<ChangeItem> Changes => Active?.Changes ?? EmptyChanges;
+
+    public string ChatTitle => Active?.ChatTitle ?? "New session";
+    public string ChatSubtitle => Active?.ChatSubtitle ?? "";
+    public string ProjectRoot => Active?.ProjectRoot ?? "";
+    public string ProjectRootShort => Active?.ProjectRootShort ?? "";
+    public string SessionId => Active?.SessionId ?? "";
+    public string SessionModel => Active?.SessionModel ?? "";
+    public string SessionRoot => Active?.SessionRoot ?? "";
+    public bool IsWorking => Active?.IsWorking ?? false;
+    public string Status => Active?.Status ?? "ready";
+    public ApprovalVM? Approval => Active?.Approval;
+    public bool HasApproval => Active?.HasApproval ?? false;
+    public string ResolvedStatus => Active?.ResolvedStatus ?? "";
+    public bool HasResolvedStatus => Active?.HasResolvedStatus ?? false;
+    public bool HasPlan => Active?.HasPlan ?? false;
+    public bool HasChanges => Active?.HasChanges ?? false;
+    public string? Branch => Active?.Branch;
+    public string? BaseBranch => Active?.BaseBranch;
+    public bool HasWorktree => Active?.HasWorktree ?? false;
+    public bool IsPreparing => Active?.IsPreparing ?? false;
+    public string UsagePercentText => Active?.UsagePercentText ?? "0% used";
+    public string UsageInText => Active?.UsageInText ?? "0";
+    public string UsageOutText => Active?.UsageOutText ?? "0";
+    public GridLength UsageFill => Active?.UsageFill ?? new GridLength(0.0001, GridUnitType.Star);
+    public GridLength UsageRest => Active?.UsageRest ?? new GridLength(1, GridUnitType.Star);
+
+    // ---- Sidebar projects ----
     public ObservableCollection<ProjectNode> Projects { get; } = [];
 
     // ---- Layout state ----
@@ -50,7 +149,9 @@ public sealed class MainViewModel : ObservableObject
         set { if (Set(ref _panelTab, value)) { Raise(nameof(ShowRunBadgeTopbar)); } }
     }
 
-    // ---- Mode ----
+    public bool ShowRunBadgeTopbar => (Active?.HasApproval ?? false) && !(PanelOpen && PanelTab == "run");
+
+    // ---- Mode (picker; applied to the active session per turn) ----
     private AgentMode _mode = AgentMode.Default;
     public AgentMode Mode
     {
@@ -84,7 +185,7 @@ public sealed class MainViewModel : ObservableObject
         _ => "IconShieldCheck",
     });
 
-    // ---- Provider / model ----
+    // ---- Provider / model (picker) ----
     private string _provider = "anthropic";
     public string Provider
     {
@@ -100,21 +201,6 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public string ModelLabel => $"{_provider} · {_model}";
-
-    // ---- Status ----
-    private bool _isWorking;
-    public bool IsWorking
-    {
-        get => _isWorking;
-        set => Set(ref _isWorking, value);
-    }
-
-    private string _status = "ready";
-    public string Status
-    {
-        get => _status;
-        set => Set(ref _status, value);
-    }
 
     // ---- Theme ----
     private string _theme = "light";
@@ -203,114 +289,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string SubscriptionLabel => !_isSignedIn ? "" : _isSubscriber ? "Subscriber" : "Not subscribed";
 
-    // ---- Title / project ----
-    private string _chatTitle = "New session";
-    public string ChatTitle
-    {
-        get => _chatTitle;
-        set => Set(ref _chatTitle, value);
-    }
-
-    private string _chatSubtitle = "";
-    public string ChatSubtitle
-    {
-        get => _chatSubtitle;
-        set => Set(ref _chatSubtitle, value);
-    }
-
-    private string _projectRoot = "";
-    public string ProjectRoot
-    {
-        get => _projectRoot;
-        set { if (Set(ref _projectRoot, value)) { Raise(nameof(ProjectRootShort)); } }
-    }
-
-    public string ProjectRootShort => ShortenPath(_projectRoot);
-
-    // ---- Session meta (workspace tab) ----
-    private string _sessionId = "";
-    public string SessionId { get => _sessionId; set => Set(ref _sessionId, value); }
-
-    private string _sessionModel = "";
-    public string SessionModel { get => _sessionModel; set => Set(ref _sessionModel, value); }
-
-    private string _sessionRoot = "";
-    public string SessionRoot { get => _sessionRoot; set => Set(ref _sessionRoot, value); }
-
-    // ---- Usage ----
-    private int _inputTokens;
-    private int _outputTokens;
-    private int _contextWindow = 200_000;
-
-    public void SetUsage(int input, int output, int contextWindow)
-    {
-        _inputTokens = input;
-        _outputTokens = output;
-        _contextWindow = contextWindow <= 0 ? 200_000 : contextWindow;
-        Raise(nameof(UsagePercentText));
-        Raise(nameof(UsageInText));
-        Raise(nameof(UsageOutText));
-        Raise(nameof(UsageFill));
-        Raise(nameof(UsageRest));
-    }
-
-    private double Pct => Math.Clamp((_inputTokens + _outputTokens) / (double)_contextWindow, 0, 1);
-
-    public string UsagePercentText => $"{(int)Math.Round(Pct * 100)}% used";
-    public string UsageInText => FormatK(_inputTokens);
-    public string UsageOutText => FormatK(_outputTokens);
-    public GridLength UsageFill => new(Math.Max(Pct, 0.0001), GridUnitType.Star);
-    public GridLength UsageRest => new(Math.Max(1 - Pct, 0.0001), GridUnitType.Star);
-
-    // ---- Approval ----
-    private ApprovalVM? _approval;
-    public ApprovalVM? Approval
-    {
-        get => _approval;
-        set
-        {
-            if (Set(ref _approval, value))
-            {
-                Raise(nameof(HasApproval));
-                Raise(nameof(ShowRunBadgeTopbar));
-            }
-        }
-    }
-
-    public bool HasApproval => _approval is not null;
-
-    private string _resolvedStatus = "";
-    public string ResolvedStatus
-    {
-        get => _resolvedStatus;
-        set { if (Set(ref _resolvedStatus, value)) { Raise(nameof(HasResolvedStatus)); } }
-    }
-
-    public bool HasResolvedStatus => !string.IsNullOrEmpty(_resolvedStatus);
-
-    public bool ShowRunBadgeTopbar => HasApproval && !(PanelOpen && PanelTab == "run");
-
     // ---- helpers ----
     private static Geometry? ResourceGeometry(string key)
         => Application.Current?.TryFindResource(key) as Geometry;
-
-    private static string FormatK(int n)
-        => n >= 1000 ? $"{n / 1000.0:0.#}k" : n.ToString();
-
-    private static string ShortenPath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return "";
-        }
-
-        var parts = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (parts.Length <= 2)
-        {
-            return path;
-        }
-
-        return "…\\" + string.Join('\\', parts[^2..]);
-    }
 }

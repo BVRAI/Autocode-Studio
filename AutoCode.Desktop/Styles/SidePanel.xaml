@@ -69,6 +69,64 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- ===================== plan / todo checklist row ===================== -->
+    <DataTemplate DataType="{x:Type vm:PlanItemVM}">
+        <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ctl:IconGlyph x:Name="PIcon" Grid.Column="0" Width="15" Height="15" Margin="0,1,10,0" VerticalAlignment="Top"
+                           Geometry="{StaticResource IconCircle}" Foreground="{DynamicResource TextFaintBrush}"/>
+            <TextBlock x:Name="PText" Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap"
+                       FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Status}" Value="in_progress">
+                <Setter TargetName="PIcon" Property="Geometry" Value="{StaticResource IconSpinner}"/>
+                <Setter TargetName="PIcon" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="PText" Property="FontWeight" Value="SemiBold"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Status}" Value="completed">
+                <Setter TargetName="PIcon" Property="Geometry" Value="{StaticResource IconCheck}"/>
+                <Setter TargetName="PIcon" Property="Foreground" Value="{DynamicResource GreenBrush}"/>
+                <Setter TargetName="PText" Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+                <Setter TargetName="PText" Property="TextDecorations" Value="Strikethrough"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Status}" Value="interrupted">
+                <Setter TargetName="PIcon" Property="Geometry" Value="{StaticResource IconAlert}"/>
+                <Setter TargetName="PIcon" Property="Foreground" Value="{DynamicResource AmberBrush}"/>
+                <Setter TargetName="PText" Property="Foreground" Value="{DynamicResource Text2Brush}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- ===================== changed-file row (review tab) ===================== -->
+    <DataTemplate DataType="{x:Type vm:ChangeItem}">
+        <Grid Margin="0,0,0,7">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="Badge" Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Top" Margin="0,1,8,0"
+                       FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" FontWeight="Bold"
+                       Foreground="{DynamicResource AmberBrush}"/>
+            <TextBlock Grid.Column="1" Text="{Binding Path}" TextWrapping="Wrap"
+                       FontFamily="{DynamicResource MonoFontFamily}" FontSize="12.5" Foreground="{DynamicResource Text2Brush}"/>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Status}" Value="A">
+                <Setter TargetName="Badge" Property="Foreground" Value="{DynamicResource GreenBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Status}" Value="D">
+                <Setter TargetName="Badge" Property="Foreground" Value="{DynamicResource RedBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Status}" Value="R">
+                <Setter TargetName="Badge" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- ===================== file tree row ===================== -->
     <DataTemplate DataType="{x:Type vm:FileNode}">
         <Button Style="{StaticResource TreeRowStyle}"

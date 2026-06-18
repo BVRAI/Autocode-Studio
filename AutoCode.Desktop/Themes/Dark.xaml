@@ -48,21 +48,4 @@
     <!-- Scrim -->
     <SolidColorBrush x:Key="ScrimBrush" Color="#8C000000"/>
 
-    <!-- ===================== Legacy aliases ===================== -->
-    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#201f1c"/>
-    <SolidColorBrush x:Key="ChromeBrush" Color="#1c1b19"/>
-    <SolidColorBrush x:Key="PanelBrush" Color="#201f1c"/>
-    <SolidColorBrush x:Key="PanelAltBrush" Color="#262420"/>
-    <SolidColorBrush x:Key="BorderBrushSoft" Color="#322f2a"/>
-    <SolidColorBrush x:Key="MutedBrush" Color="#b5b0a6"/>
-    <SolidColorBrush x:Key="AssistantBubbleBrush" Color="#1c1b19"/>
-    <SolidColorBrush x:Key="ErrorBubbleBrush" Color="#2c1916"/>
-    <SolidColorBrush x:Key="WarningBubbleBrush" Color="#2c2113"/>
-    <SolidColorBrush x:Key="SuccessBubbleBrush" Color="#16271c"/>
-    <SolidColorBrush x:Key="InputBrush" Color="#262420"/>
-    <SolidColorBrush x:Key="InputBorderBrush" Color="#3d3933"/>
-    <SolidColorBrush x:Key="MenuRailBrush" Color="#16140D"/>
-    <SolidColorBrush x:Key="MenuRailTextBrush" Color="#E9DFBE"/>
-    <SolidColorBrush x:Key="MenuRailMutedBrush" Color="#A89971"/>
-
 </ResourceDictionary>

@@ -6,6 +6,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:ctl="clr-namespace:AutoCode.Desktop.Controls"
         xmlns:vm="clr-namespace:AutoCode.Desktop.ViewModels"
+        xmlns:panels="clr-namespace:AutoCode.Desktop.Views.Panels"
         mc:Ignorable="d"
         x:Name="RootWindow"
         Title="AutoCode Studio"
@@ -53,7 +54,7 @@
 
                         <!-- theme -->
                         <Button Style="{StaticResource TitleToggleStyle}" VerticalAlignment="Center"
-                                Click="ThemeToggle_Click" ToolTip="Toggle theme"
+                                Click="ThemeToggle_Click" ToolTip="{DynamicResource L_Tooltip_ToggleTheme}"
                                 AutomationProperties.AutomationId="ThemeToggle">
                             <Grid Width="18" Height="18">
                                 <ctl:IconGlyph Geometry="{StaticResource IconMoon}" Width="18" Height="18" Visibility="{Binding IsDark, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
@@ -71,10 +72,10 @@
                                     <TextBlock>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="Increase text size"/>
+                                                <Setter Property="Text" Value="{DynamicResource L_Tooltip_IncreaseTextSize}"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
-                                                        <Setter Property="Text" Value="Decrease text size"/>
+                                                        <Setter Property="Text" Value="{DynamicResource L_Tooltip_DecreaseTextSize}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -87,7 +88,7 @@
                                 <Border Padding="3,1" Margin="0,0,1,0" CornerRadius="{StaticResource RadiusChip}" VerticalAlignment="Center">
                                     <Border.Style>
                                         <Style TargetType="Border">
-                                            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="Background" Value="{DynamicResource EditableBrush}"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
                                                     <Setter Property="Background" Value="Transparent"/>
@@ -98,10 +99,12 @@
                                     <TextBlock Text="A" FontSize="10" FontWeight="Bold" VerticalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource EditableInkBrush}"/>
+                                                <Setter Property="Opacity" Value="1.0"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+                                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                                        <Setter Property="Opacity" Value="0.4"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -115,7 +118,7 @@
                                             <Setter Property="Background" Value="Transparent"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
-                                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                    <Setter Property="Background" Value="{DynamicResource EditableBrush}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -123,10 +126,12 @@
                                     <TextBlock Text="A" FontSize="15" FontWeight="Bold" VerticalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+                                                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                                <Setter Property="Opacity" Value="0.4"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsLargeFont}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource EditableInkBrush}"/>
+                                                        <Setter Property="Opacity" Value="1.0"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -146,10 +151,10 @@
                                     <TextBlock>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="Keep computer awake — currently off"/>
+                                                <Setter Property="Text" Value="{DynamicResource L_Tooltip_KeepAwakeOff}"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
-                                                        <Setter Property="Text" Value="Keep computer awake — currently on"/>
+                                                        <Setter Property="Text" Value="{DynamicResource L_Tooltip_KeepAwakeOn}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -163,17 +168,20 @@
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="Background" Value="{DynamicResource EditableBrush}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
                                 <ctl:IconGlyph Width="15" Height="15" Geometry="{StaticResource IconBolt}" Filled="True">
                                     <ctl:IconGlyph.Style>
-                                        <Style TargetType="ctl:IconGlyph">
+                                        <Style TargetType="ctl:IconGlyph" BasedOn="{StaticResource {x:Type ctl:IconGlyph}}">
+                                            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
+                                            <Setter Property="Opacity" Value="0.5"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsKeepAwake}" Value="True">
-                                                    <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource EditableInkBrush}"/>
+                                                    <Setter Property="Opacity" Value="1.0"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -184,13 +192,13 @@
 
                     </StackPanel>
 
-                    <Button x:Name="MinButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="Minimize_Click" ToolTip="Minimize">
+                    <Button x:Name="MinButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="Minimize_Click" ToolTip="{DynamicResource L_Tooltip_Minimize}">
                         <ctl:IconGlyph Geometry="{StaticResource IconMin}" Width="16" Height="16"/>
                     </Button>
-                    <Button x:Name="MaxButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="MaximizeRestore_Click" ToolTip="Maximize">
+                    <Button x:Name="MaxButton" Height="38" Style="{StaticResource WinButtonStyle}" Click="MaximizeRestore_Click" ToolTip="{DynamicResource L_Tooltip_Maximize}">
                         <ctl:IconGlyph x:Name="MaxIcon" Geometry="{StaticResource IconMax}" Width="14" Height="14"/>
                     </Button>
-                    <Button x:Name="CloseButton" Height="38" Style="{StaticResource WinCloseButtonStyle}" Click="CloseWindow_Click" ToolTip="Close">
+                    <Button x:Name="CloseButton" Height="38" Style="{StaticResource WinCloseButtonStyle}" Click="CloseWindow_Click" ToolTip="{DynamicResource L_Tooltip_Close}">
                         <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="15" Height="15"/>
                     </Button>
                 </StackPanel>
@@ -217,16 +225,16 @@
 
                     <!-- top -->
                     <StackPanel Margin="12,12,12,6">
-                        <Button Style="{StaticResource NewSessionButtonStyle}" Click="NewSession_Click">
+                        <Button Style="{StaticResource NewSessionButtonStyle}" Click="NewSession_Click" AutomationProperties.AutomationId="NewSessionButton">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="16" Height="16" Margin="0,0,9,0"/>
-                                <TextBlock Text="New session" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource L_NewSession}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="SearchToggle_Click">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph Geometry="{StaticResource IconSearch}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                                <TextBlock Text="Search" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource L_Search}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <TextBox x:Name="SearchBox" Visibility="Collapsed" Margin="0,4,0,0" Padding="8,5"
@@ -237,7 +245,43 @@
                     <!-- scroll: projects -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,0,8,4">
                         <StackPanel>
-                            <TextBlock Text="PROJECTS" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                            <!-- Live workspace switcher: the open sessions (SessionManager.Sessions),
+                                 with running status + close. Distinct from PROJECTS (disk history). -->
+                            <TextBlock Text="{DynamicResource L_Workspaces}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                            <ItemsControl ItemsSource="{Binding Sessions.Sessions}" Margin="0,0,0,4">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,1,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}"
+                                                    AutomationProperties.Name="{Binding ProjectRootShort}"
+                                                    Command="{Binding DataContext.ActivateSessionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding ChatTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
+                                                    <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
+                                                             Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}"/>
+                                                </Grid>
+                                            </Button>
+                                            <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" Margin="2,0,0,0"
+                                                    ToolTip="{DynamicResource L_Tooltip_CloseSession}"
+                                                    Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="12" Height="12"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="{DynamicResource L_Projects}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
                             <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:ProjectNode}">
@@ -301,7 +345,7 @@
                                         BorderThickness="1" CornerRadius="10" Padding="11,10">
                                     <StackPanel>
                                         <Grid>
-                                            <TextBlock Text="Context" HorizontalAlignment="Left" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource Text2Brush}"/>
+                                            <TextBlock Text="{DynamicResource L_Context}" HorizontalAlignment="Left" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource Text2Brush}"/>
                                             <TextBlock Text="{Binding UsagePercentText}" HorizontalAlignment="Right" FontSize="11.5" Foreground="{DynamicResource Text3Brush}"/>
                                         </Grid>
                                         <Border Height="5" CornerRadius="3" Background="{DynamicResource Surface4Brush}" Margin="0,8,0,0" ClipToBounds="True">
@@ -314,17 +358,20 @@
                                             </Grid>
                                         </Border>
                                         <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                                            <TextBlock Text="in" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
+                                            <TextBlock Text="{DynamicResource L_UsageIn}" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
                                             <TextBlock Text="{Binding UsageInText}" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
-                                            <TextBlock Text="out" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
+                                            <TextBlock Text="{DynamicResource L_UsageOut}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextFaintBrush}"/>
                                             <TextBlock Text="{Binding UsageOutText}" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
                                 <Button x:Name="SettingsButton" Style="{StaticResource SidebarItemStyle}" Margin="0,8,0,0" Click="SettingsButton_Click">
                                     <StackPanel Orientation="Horizontal">
-                                        <ctl:IconGlyph Geometry="{StaticResource IconGear}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                                        <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                                        <!-- Gear borrowed from Automax V6 (Segoe MDL2 Assets E713) for ecosystem parity. -->
+                                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="16"
+                                                   TextAlignment="Center" Margin="0,0,9,0" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource Text3Brush}"/>
+                                        <TextBlock Text="{DynamicResource L_Settings}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -354,7 +401,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Click="SidebarToggle_Click" ToolTip="Toggle sidebar">
+                        <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Click="SidebarToggle_Click" ToolTip="{DynamicResource L_Tooltip_ToggleSidebar}">
                             <ctl:IconGlyph Geometry="{StaticResource IconMenu}" Width="18" Height="18"/>
                         </Button>
 
@@ -363,7 +410,8 @@
                             <TextBlock Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <Button Grid.Column="3" Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,8,0"
+                        <Button Grid.Column="3" x:Name="ChooseProjectButton" AutomationProperties.AutomationId="ChooseProjectButton"
+                                Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,8,0"
                                 ToolTip="{Binding ProjectRoot}">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="14" Height="14" Margin="0,0,7,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
@@ -371,11 +419,11 @@
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="4" x:Name="WorkspaceToggle" Style="{StaticResource IconButtonStyle}" Click="WorkspaceToggle_Click" ToolTip="Workspace">
+                        <Button Grid.Column="4" x:Name="WorkspaceToggle" Style="{StaticResource IconButtonStyle}" Click="WorkspaceToggle_Click" ToolTip="{DynamicResource L_Tooltip_Workspace}">
                             <ctl:IconGlyph Geometry="{StaticResource IconPanel}" Width="18" Height="18"/>
                         </Button>
 
-                        <Button Grid.Column="5" x:Name="RunToggle" Style="{StaticResource IconButtonStyle}" Click="RunToggle_Click" ToolTip="Run">
+                        <Button Grid.Column="5" x:Name="RunToggle" Style="{StaticResource IconButtonStyle}" Click="RunToggle_Click" ToolTip="{DynamicResource L_Tooltip_Run}">
                             <Grid>
                                 <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="18" Height="18"/>
                                 <Ellipse Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"
@@ -384,7 +432,7 @@
                             </Grid>
                         </Button>
 
-                        <Button Grid.Column="6" x:Name="SessionMenuButton" Style="{StaticResource IconButtonStyle}" Click="SessionMenu_Click" ToolTip="Session menu">
+                        <Button Grid.Column="6" x:Name="SessionMenuButton" Style="{StaticResource IconButtonStyle}" Click="SessionMenu_Click" ToolTip="{DynamicResource L_Tooltip_SessionMenu}">
                             <ctl:IconGlyph Geometry="{StaticResource IconDots}" Width="18" Height="18" Filled="True"/>
                         </Button>
                     </Grid>
@@ -428,7 +476,7 @@
                                          FontSize="{DynamicResource BodyFontSize}" Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
                                          AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160" VerticalScrollBarVisibility="Auto"
                                          Padding="16,14,16,14" KeyDown="PromptBox_KeyDown" TextChanged="PromptBox_TextChanged"/>
-                                <TextBlock IsHitTestVisible="False" Text="Ask for follow-up changes" Margin="17,14,0,0"
+                                <TextBlock IsHitTestVisible="False" Text="{DynamicResource L_ComposerPlaceholder}" Margin="17,14,0,0"
                                            FontSize="{DynamicResource BodyFontSize}" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Top">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -445,7 +493,7 @@
 
                             <Grid Grid.Row="1" Margin="10,0,10,10">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="Attach (coming soon)">
+                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="{DynamicResource L_Tooltip_Attach}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="18" Height="18"/>
                                     </Button>
                                     <Button x:Name="ModePill" AutomationProperties.AutomationId="ModePill" Style="{StaticResource PillButtonStyle}" Tag="{Binding ModeWire}" Margin="7,0,0,0" Click="ModePill_Click">
@@ -478,14 +526,14 @@
                                         <ctl:IconGlyph Geometry="{StaticResource IconMic}" Width="18" Height="18"/>
                                     </Button>
                                     <Button x:Name="VoiceCaretButton" AutomationProperties.AutomationId="VoiceCaretButton" Width="22"
-                                            Style="{StaticResource ComposerIconButtonStyle}" Click="VoiceCaret_Click" ToolTip="Voice settings">
+                                            Style="{StaticResource ComposerIconButtonStyle}" Click="VoiceCaret_Click" ToolTip="{DynamicResource L_Tooltip_VoiceSettings}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconChevronUp}" Width="11" Height="11"/>
                                     </Button>
-                                    <Button x:Name="SendButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Send_Click" ToolTip="Send"
+                                    <Button x:Name="SendButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Send_Click" ToolTip="{DynamicResource L_Tooltip_Send}"
                                             Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconArrowUp}" Width="17" Height="17" Foreground="{DynamicResource AccentInkBrush}"/>
                                     </Button>
-                                    <Button x:Name="StopButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Stop_Click" ToolTip="Stop"
+                                    <Button x:Name="StopButton" Style="{StaticResource SendButtonStyle}" Margin="6,0,0,0" Click="Stop_Click" ToolTip="{DynamicResource L_Tooltip_Stop}"
                                             Background="{DynamicResource Text2Brush}"
                                             Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconStop}" Width="15" Height="15" Foreground="White"/>
@@ -515,32 +563,50 @@
                                                   IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=workspace, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal">
                                             <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Workspace" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource L_Tab_Workspace}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </ToggleButton>
                                     <ToggleButton x:Name="RunTab" Style="{StaticResource SpTabStyle}" Margin="2,0,0,0" Click="RunTab_Click"
                                                   IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=run, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal">
                                             <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Run" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource L_Tab_Run}" VerticalAlignment="Center"/>
                                             <Ellipse Width="6" Height="6" Margin="6,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
                                                      Visibility="{Binding HasApproval, Converter={StaticResource BoolToVis}}"/>
                                         </StackPanel>
                                     </ToggleButton>
+                                    <!-- Plan tab — only present when the agent has a live todo/plan checklist. -->
+                                    <ToggleButton x:Name="PlanTab" Style="{StaticResource SpTabStyle}" Margin="2,0,0,0" Click="PlanTab_Click"
+                                                  Visibility="{Binding HasPlan, Converter={StaticResource BoolToVis}}"
+                                                  IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=plan, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconPlan}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource L_Tab_Plan}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                    <!-- Changes tab — only present when the session has git changes to review. -->
+                                    <ToggleButton x:Name="ChangesTab" Style="{StaticResource SpTabStyle}" Margin="2,0,0,0" Click="ChangesTab_Click"
+                                                  Visibility="{Binding HasChanges, Converter={StaticResource BoolToVis}}"
+                                                  IsChecked="{Binding PanelTab, Converter={StaticResource EnumEquals}, ConverterParameter=changes, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconDiff}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource L_Tab_Changes}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ToggleButton>
                                 </StackPanel>
                             </Border>
-                            <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right" Click="ClosePanel_Click" ToolTip="Close">
+                            <Button Style="{StaticResource IconButtonStyle}" HorizontalAlignment="Right" Click="ClosePanel_Click" ToolTip="{DynamicResource L_Tooltip_Close}">
                                 <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16"/>
                             </Button>
                         </Grid>
                     </Border>
 
-                    <!-- panel body -->
+                    <!-- panel body — self-contained modules; the host just switches by PanelTab.
+                         Add a new panel = new UserControl + a tab + a visibility trigger. -->
                     <Grid Grid.Row="1">
-                        <!-- workspace -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
-                            <ScrollViewer.Style>
-                                <Style TargetType="ScrollViewer">
+                        <panels:WorkspacePanel>
+                            <panels:WorkspacePanel.Style>
+                                <Style TargetType="panels:WorkspacePanel">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding PanelTab}" Value="workspace">
@@ -548,35 +614,12 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ScrollViewer.Style>
-                            <StackPanel>
-                                <TextBlock Text="SESSION" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
-                                <Grid Margin="0,0,0,20">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="48"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="id" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SessionId}" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="model" Margin="0,3,0,0" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SessionModel}" Margin="0,3,0,0" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="root" Margin="0,3,0,0" Foreground="{DynamicResource TextFaintBrush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SessionRoot}" Margin="0,3,0,0" Foreground="{DynamicResource Text2Brush}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap"/>
-                                </Grid>
-                                <TextBlock Text="FILES" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
-                                <ItemsControl x:Name="FileTree" ItemsSource="{Binding Files}"/>
-                            </StackPanel>
-                        </ScrollViewer>
+                            </panels:WorkspacePanel.Style>
+                        </panels:WorkspacePanel>
 
-                        <!-- run -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
-                            <ScrollViewer.Style>
-                                <Style TargetType="ScrollViewer">
+                        <panels:RunPanel>
+                            <panels:RunPanel.Style>
+                                <Style TargetType="panels:RunPanel">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding PanelTab}" Value="run">
@@ -584,47 +627,34 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ScrollViewer.Style>
-                            <StackPanel>
-                                <!-- approval card -->
-                                <Border x:Name="ApprovalPanel" DataContext="{Binding Approval}"
-                                        Background="{DynamicResource AmberBgBrush}" BorderBrush="{DynamicResource AmberLineBrush}"
-                                        BorderThickness="1" CornerRadius="12" Padding="13" Margin="0,0,0,16"
-                                        Visibility="{Binding RelativeSource={RelativeSource Self}, Path=DataContext, Converter={StaticResource NullToVis}}">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal">
-                                            <ctl:IconGlyph Geometry="{StaticResource IconAlert}" Width="16" Height="16" Margin="0,0,8,0" Foreground="{DynamicResource AmberBrush}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Pending approval" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <TextBlock Margin="0,9,0,8" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap">
-                                            <Run Text="{Binding ToolName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><Run Text="  "/><Run Text="{Binding Target, Mode=OneWay}"/>
-                                        </TextBlock>
-                                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="8" MaxHeight="190">
-                                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
-                                                <ItemsControl ItemsSource="{Binding PreviewLines}"/>
-                                            </ScrollViewer>
-                                        </Border>
-                                        <TextBox x:Name="RevisionBox" Margin="0,10,0,0" Padding="10,8" MinHeight="46" AcceptsReturn="True" TextWrapping="Wrap"
-                                                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" Foreground="{DynamicResource TextBrush}"
-                                                 FontSize="12.5" ToolTip="Optional revision guidance…"/>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                                            <Button Style="{StaticResource DangerButtonStyle}" Content="Decline" Click="DeclineApproval_Click"/>
-                                            <Button Style="{StaticResource SmallGhostButtonStyle}" Content="Revise" Margin="7,0,0,0" Click="ReviseApproval_Click"/>
-                                            <Button Style="{StaticResource PrimaryButtonStyle}" Content="Accept" Margin="7,0,0,0" Click="AcceptApproval_Click"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
+                            </panels:RunPanel.Style>
+                        </panels:RunPanel>
 
-                                <!-- resolved status -->
-                                <TextBlock Text="{Binding ResolvedStatus}" Margin="0,0,0,14" FontSize="12.5" Foreground="{DynamicResource Text2Brush}"
-                                           Visibility="{Binding HasResolvedStatus, Converter={StaticResource BoolToVis}}"/>
+                        <panels:PlanPanel>
+                            <panels:PlanPanel.Style>
+                                <Style TargetType="panels:PlanPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelTab}" Value="plan">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </panels:PlanPanel.Style>
+                        </panels:PlanPanel>
 
-                                <TextBlock Text="TOOL TIMELINE" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
-                                <ItemsControl x:Name="TimelineList" ItemsSource="{Binding Timeline}"/>
-                                <TextBlock Text="No tools run yet." HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}"
-                                           Visibility="{Binding HasItems, ElementName=TimelineList, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
-                            </StackPanel>
-                        </ScrollViewer>
+                        <panels:ChangesPanel>
+                            <panels:ChangesPanel.Style>
+                                <Style TargetType="panels:ChangesPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelTab}" Value="changes">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </panels:ChangesPanel.Style>
+                        </panels:ChangesPanel>
                     </Grid>
                 </Grid>
             </Border>
@@ -634,22 +664,22 @@
         <Popup x:Name="ModePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModePill}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
                 <StackPanel>
-                    <TextBlock Text="MODE" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <TextBlock Text="{DynamicResource L_Mode}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Tag="default" Click="ModeMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
                             <StackPanel>
-                                <TextBlock Text="Default"/>
-                                <TextBlock Text="Edits &amp; shell require approval" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_Default}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_Default_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="autocode" Click="ModeMenu_Click">
+                    <Button Style="{StaticResource MenuItemButtonStyle}" AutomationProperties.AutomationId="ModeFullAccess" Tag="autocode" Click="ModeMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconBolt}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
                             <StackPanel>
-                                <TextBlock Text="Full access"/>
-                                <TextBlock Text="Auto-approve file edits &amp; shell" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_FullAccess}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_FullAccess_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -657,8 +687,8 @@
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconPlan}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
                             <StackPanel>
-                                <TextBlock Text="Plan only"/>
-                                <TextBlock Text="Read-only — no mutations" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_PlanOnly}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_PlanOnly_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -666,8 +696,8 @@
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconCrown}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
                             <StackPanel>
-                                <TextBlock Text="Admin"/>
-                                <TextBlock Text="Unrestricted, incl. system ops" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_Admin}"/>
+                                <TextBlock Text="{DynamicResource L_Mode_Admin_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -678,13 +708,13 @@
         <Popup x:Name="ModelPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModelPill}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
                 <StackPanel>
-                    <TextBlock Text="PROVIDER" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <TextBlock Text="{DynamicResource L_Provider}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Tag="anthropic" Click="ProviderMenu_Click" Content="anthropic"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openai" Click="ProviderMenu_Click" Content="openai"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Tag="xai" Click="ProviderMenu_Click" Content="xai"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openrouter" Click="ProviderMenu_Click" Content="openrouter"/>
                     <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
-                    <TextBlock x:Name="ModelMenuLabel" Text="MODEL" Style="{StaticResource CapsLabel}" Margin="10,4,10,4"/>
+                    <TextBlock x:Name="ModelMenuLabel" Text="{DynamicResource L_Model}" Style="{StaticResource CapsLabel}" Margin="10,4,10,4"/>
                     <StackPanel x:Name="ModelListPanel"/>
                 </StackPanel>
             </Border>
@@ -693,13 +723,13 @@
         <Popup x:Name="VoicePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=VoiceCaretButton}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="260" Margin="0,0,0,6">
                 <StackPanel>
-                    <TextBlock Text="VOICE BACKEND" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <TextBlock Text="{DynamicResource L_VoiceBackend}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
                     <StackPanel x:Name="VoiceListPanel"/>
                     <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
                     <Button x:Name="AutoSubmitItem" Style="{StaticResource MenuItemButtonStyle}" Click="AutoSubmitToggle_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph x:Name="AutoSubmitCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
-                            <TextBlock Text="Auto-submit after dictation" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_AutoSubmit}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -714,7 +744,7 @@
                             Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="Sign in" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_SignIn}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -729,15 +759,15 @@
                                 IsEnabled="{Binding ProxyToggleEnabled}">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph x:Name="UseProxyCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
-                                <TextBlock Text="Use Automax proxy" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource L_UseProxy}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <TextBlock Text="Subscribe at bvrai.ca to use the proxy" Margin="35,0,10,6" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"
+                        <TextBlock Text="{DynamicResource L_ProxySubscribeHint}" Margin="35,0,10,6" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"
                                    Visibility="{Binding ProxyToggleEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
                         <Button Style="{StaticResource MenuItemButtonStyle}" Click="SignOut_Click">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph Geometry="{StaticResource IconX}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                                <TextBlock Text="Sign out" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource L_SignOut}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -746,22 +776,44 @@
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="ByokMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconKey}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="Bring your own keys" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_Byok}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="ProxyMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconLink}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="Proxy access" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_ProxyAccess}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="AutoBranchToggle_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph x:Name="AutoBranchCheck" Geometry="{StaticResource IconCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource AccentBrush}" Visibility="Hidden"/>
+                            <TextBlock Text="{DynamicResource L_AutoBranch}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="AboutMenu_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="About AutoCode Studio" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_About}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    <Button x:Name="LanguageMenuButton" Style="{StaticResource MenuItemButtonStyle}" Click="LanguageMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconGlobe}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="{DynamicResource L_Language}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="LanguagePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=SettingsButton}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="200" Margin="0,0,0,6">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource L_Language}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <StackPanel x:Name="LanguageListPanel"/>
                 </StackPanel>
             </Border>
         </Popup>
@@ -772,13 +824,13 @@
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="NewSession_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="New session" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_NewSession}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="ClearConversation_Click">
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconUndo}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                            <TextBlock Text="Clear conversation" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_ClearConversation}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

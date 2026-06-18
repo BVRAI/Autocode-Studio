@@ -9,7 +9,15 @@ namespace AutoCode.Desktop.Misc;
 /// so we drop a small session.json sidecar in each session dir (id, title, project, model,
 /// startedAt) and group by project for the sidebar. No engine changes.
 /// </summary>
-public sealed record SessionSidecar(string Id, string Title, string ProjectRoot, string Model, DateTimeOffset StartedAt);
+public sealed record SessionSidecar(
+    string Id,
+    string Title,
+    string ProjectRoot,
+    string Model,
+    DateTimeOffset StartedAt,
+    string? GitBranch = null,
+    string? GitWorktreePath = null,
+    string? GitBaseBranch = null);
 
 public static class SessionIndex
 {

@@ -162,6 +162,7 @@ public sealed class AgentLoop
             if (_cancelled)
             {
                 TodoWriteTool.MarkInProgressInterrupted(context.SessionId);
+                await EmitPlanAsync(context).ConfigureAwait(false);
                 _conversation.Add(AgentMessage.User("[user cancelled the task]"));
                 await EmitAsync(new StatusEvent(DateTimeOffset.Now, "cancelled")).ConfigureAwait(false);
                 return mutated;
@@ -301,6 +302,11 @@ public sealed class AgentLoop
 
                 await EmitAsync(new ToolResultEvent(DateTimeOffset.Now, toolUse.Name, result.Summary, result.Content, result.IsError, sw.ElapsedMilliseconds)).ConfigureAwait(false);
                 toolResults.Add(new ToolResultBlock(toolUse.Id, WrapExternalResult(toolUse.Name, toolUse.Input, result), result.IsError));
+
+                if (toolUse.Name == "todo_write" && !result.IsError)
+                {
+                    await EmitPlanAsync(context).ConfigureAwait(false);
+                }
 
                 if (consecutiveFailures.TryGetValue(toolUse.Name, out var failures) && failures >= MaxRetriesPerTool)
                 {
@@ -473,6 +479,15 @@ public sealed class AgentLoop
     }
 
     private Task EmitAsync(AgentEvent evt) => _emitAsync(evt);
+
+    // Push the session's current todo checklist to the UI (used after each todo_write and on cancel).
+    private Task EmitPlanAsync(SessionContext context)
+    {
+        var items = TodoWriteTool.CurrentTodos(context.SessionId)
+            .Select(t => new PlanItem(t.Id, t.Text, t.Status))
+            .ToList();
+        return EmitAsync(new PlanEvent(DateTimeOffset.Now, items));
+    }
 
     private static GateDecision GateFor(AgentMode mode, string toolName)
     {

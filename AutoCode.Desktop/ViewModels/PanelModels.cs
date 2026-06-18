@@ -33,6 +33,10 @@ public sealed class SessionNode : ObservableObject
     public string ProjectRoot { get; init; } = "";
     public string SessionDir { get; init; } = "";
 
+    public string? GitBranch { get; init; }
+    public string? GitWorktreePath { get; init; }
+    public string? GitBaseBranch { get; init; }
+
     public string RelativeTime
     {
         get => _relativeTime;
@@ -92,6 +96,22 @@ public sealed class PreviewLine
 
     /// <summary>"add" | "del" | "ctx".</summary>
     public string Kind { get; init; } = "ctx";
+}
+
+/// <summary>A checklist row on the Plan tab. Status: pending | in_progress | completed | interrupted.</summary>
+public sealed class PlanItemVM
+{
+    public string Text { get; init; } = "";
+
+    public string Status { get; init; } = "pending";
+}
+
+/// <summary>A changed file on the Changes (review) tab. Status: A | M | D | R | C.</summary>
+public sealed class ChangeItem
+{
+    public string Status { get; init; } = "M";
+
+    public string Path { get; init; } = "";
 }
 
 /// <summary>A row in the Workspace file tree.</summary>

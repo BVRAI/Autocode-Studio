@@ -29,6 +29,11 @@
     <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff"/>
     <SolidColorBrush x:Key="CloseHoverBrush" Color="#e5443b"/>
 
+    <!-- Active-toggle highlight chip — pale cream + near-black ink, identical in light & dark.
+         Matches Automax V6 (EditableColor #FFFDE7 / #1a1a1a ink) for the title-bar toggles. -->
+    <SolidColorBrush x:Key="EditableBrush" Color="#FFFDE7"/>
+    <SolidColorBrush x:Key="EditableInkBrush" Color="#1a1a1a"/>
+
     <!-- Accent gradients (logo chip, usage bar) -->
     <LinearGradientBrush x:Key="LogoChipBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#2f6fe0" Offset="0"/>

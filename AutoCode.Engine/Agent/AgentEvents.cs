@@ -12,6 +12,12 @@ public sealed record ToolResultEvent(DateTimeOffset At, string ToolName, string 
 
 public sealed record VerificationEvent(DateTimeOffset At, string Command, bool? Passed, string Output) : AgentEvent(At);
 
+/// <summary>A single checklist item. Status: pending | in_progress | completed | interrupted.</summary>
+public sealed record PlanItem(string Id, string Text, string Status);
+
+/// <summary>The current todo/plan checklist for the session (emitted on every todo_write change).</summary>
+public sealed record PlanEvent(DateTimeOffset At, IReadOnlyList<PlanItem> Items) : AgentEvent(At);
+
 public enum ApprovalDecisionKind
 {
     Accept,

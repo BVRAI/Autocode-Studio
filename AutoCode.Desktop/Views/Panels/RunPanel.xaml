@@ -1,0 +1,48 @@
+<UserControl x:Class="AutoCode.Desktop.Views.Panels.RunPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:AutoCode.Desktop.Controls">
+    <!-- Self-contained Run module: pending approval + resolved status + tool timeline.
+         DataContext inherited (MainViewModel façade); actions are bound commands. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
+        <StackPanel>
+            <!-- approval card -->
+            <Border Background="{DynamicResource AmberBgBrush}" BorderBrush="{DynamicResource AmberLineBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="13" Margin="0,0,0,16"
+                    Visibility="{Binding HasApproval, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph Geometry="{StaticResource IconAlert}" Width="16" Height="16" Margin="0,0,8,0" Foreground="{DynamicResource AmberBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource L_PendingApproval}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Margin="0,9,0,8" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap">
+                        <Run Text="{Binding Approval.ToolName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><Run Text="  "/><Run Text="{Binding Approval.Target, Mode=OneWay}"/>
+                    </TextBlock>
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="8" MaxHeight="190">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
+                            <ItemsControl ItemsSource="{Binding Approval.PreviewLines}"/>
+                        </ScrollViewer>
+                    </Border>
+                    <TextBox Margin="0,10,0,0" Padding="10,8" MinHeight="46" AcceptsReturn="True" TextWrapping="Wrap"
+                             Text="{Binding RevisionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" Foreground="{DynamicResource TextBrush}"
+                             FontSize="12.5" ToolTip="{DynamicResource L_Tooltip_RevisionGuidance}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Style="{StaticResource DangerButtonStyle}" Content="{DynamicResource L_Decline}" Command="{Binding DeclineApprovalCommand}"/>
+                        <Button Style="{StaticResource SmallGhostButtonStyle}" Content="{DynamicResource L_Revise}" Margin="7,0,0,0" Command="{Binding ReviseApprovalCommand}"/>
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Content="{DynamicResource L_Accept}" Margin="7,0,0,0" Command="{Binding AcceptApprovalCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- resolved status -->
+            <TextBlock Text="{Binding ResolvedStatus}" Margin="0,0,0,14" FontSize="12.5" Foreground="{DynamicResource Text2Brush}"
+                       Visibility="{Binding HasResolvedStatus, Converter={StaticResource BoolToVis}}"/>
+
+            <TextBlock Text="{DynamicResource L_ToolTimeline}" Style="{StaticResource CapsLabel}" Margin="0,0,0,8"/>
+            <ItemsControl x:Name="TimelineList" ItemsSource="{Binding Timeline}"/>
+            <TextBlock Text="{DynamicResource L_NoToolsRun}" HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}"
+                       Visibility="{Binding HasItems, ElementName=TimelineList, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

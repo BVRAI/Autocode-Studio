@@ -33,7 +33,13 @@ public sealed class AutocodeConfig
 
     public bool AutoVerify { get; set; } = true;
 
+    /// <summary>When true, each new session runs in its own git worktree on a dedicated branch.</summary>
+    public bool AutoWorktree { get; set; }
+
     public string Theme { get; set; } = "light";
+
+    /// <summary>UI language code (e.g. "en", "fr", "zh-Hans"). Null = auto-detect from OS culture.</summary>
+    public string? Language { get; set; }
 
     public double TextScale { get; set; } = 1.0;
 
