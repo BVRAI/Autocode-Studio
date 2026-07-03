@@ -68,7 +68,10 @@ public partial class MainWindow
         session.ChatSubtitle = "";
         _vm.Sessions.Activate(session);
 
-        WriteSidecar(session);
+        // Don't persist an unused session. It stays live in the WORKSPACES list (bound to
+        // SessionManager) but isn't written to disk until the first prompt is sent
+        // (UpdateActiveSessionTitle -> WriteSidecar), so empty "New session" tabs never clutter the
+        // saved PROJECTS history. (SessionIndex.LoadAll skips session folders with no session.json.)
         RebuildSidebar(sessionId);
         RefreshUsage(session);
         RefreshFiles(session);
