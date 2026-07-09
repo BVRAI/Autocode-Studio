@@ -152,6 +152,25 @@ public sealed class AnthropicProvider : ILlmProvider
                         }
                     });
                     break;
+                case ThinkingBlock thinking:
+                    if (!string.IsNullOrEmpty(thinking.RedactedData))
+                    {
+                        content.Add(new JsonObject
+                        {
+                            ["type"] = "redacted_thinking",
+                            ["data"] = thinking.RedactedData
+                        });
+                    }
+                    else if (!string.IsNullOrEmpty(thinking.Signature))
+                    {
+                        content.Add(new JsonObject
+                        {
+                            ["type"] = "thinking",
+                            ["thinking"] = thinking.Text,
+                            ["signature"] = thinking.Signature
+                        });
+                    }
+                    break;
             }
         }
 
@@ -180,6 +199,18 @@ public sealed class AnthropicProvider : ILlmProvider
                         block.TryGetProperty("input", out var input)
                             ? JsonHelpers.ToDictionary(input)
                             : new Dictionary<string, object?>(StringComparer.Ordinal)));
+                }
+                else if (type == "thinking")
+                {
+                    blocks.Add(new ThinkingBlock(
+                        block.TryGetProperty("thinking", out var thinking) ? thinking.GetString() ?? "" : "",
+                        block.TryGetProperty("signature", out var signature) ? signature.GetString() : null));
+                }
+                else if (type == "redacted_thinking")
+                {
+                    blocks.Add(new ThinkingBlock(
+                        "",
+                        RedactedData: block.TryGetProperty("data", out var data) ? data.GetString() : null));
                 }
             }
         }

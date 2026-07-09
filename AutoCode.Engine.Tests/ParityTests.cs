@@ -1,5 +1,7 @@
 using AutoCode.Engine.Agent;
 using AutoCode.Engine.Llm;
+using AutoCode.Engine.Session;
+using AutoCode.Engine.Tools;
 
 namespace AutoCode.Engine.Tests;
 
@@ -119,6 +121,13 @@ public sealed class ParityTests
         Assert.IsFalse(ContextWindow.ShouldAutoCompact(0, "xai", "grok-code-fast-1"));
     }
 
+    [TestMethod]
+    public void ShouldMaskObservations_AtEarlierThreshold()
+    {
+        Assert.IsTrue(ContextWindow.ShouldMaskObservations(130_000, "xai", "grok-code-fast-1")); // >= 120k
+        Assert.IsFalse(ContextWindow.ShouldMaskObservations(110_000, "xai", "grok-code-fast-1"));
+    }
+
     // ---------- Loop detection ----------
 
     [TestMethod]
@@ -135,6 +144,138 @@ public sealed class ParityTests
         var b = AgentLoop.StableStringify(new Dictionary<string, object?> { ["a"] = "x y", ["b"] = 1 });
         Assert.AreEqual(a, b);
     }
+
+    [TestMethod]
+    public void MaskOldToolResults_MasksOnlyOldLargeResults()
+    {
+        var old = new string('x', 2500);
+        var recent = new string('y', 2500);
+        var conversation = new List<AgentMessage>
+        {
+            AgentMessage.User("first"),
+            AgentMessage.User(new ContentBlock[] { new ToolResultBlock("t1", old) }),
+            AgentMessage.User("middle"),
+            AgentMessage.User(new ContentBlock[] { new ToolResultBlock("t2", recent), new ThinkingBlock("keep") }),
+            AgentMessage.User("latest")
+        };
+
+        var masked = AgentLoop.MaskOldToolResults(conversation, keepPairs: 2);
+
+        Assert.AreEqual(1, masked);
+        Assert.AreNotEqual(old, ((ToolResultBlock)conversation[1].Blocks![0]).Content);
+        Assert.AreEqual(recent, ((ToolResultBlock)conversation[3].Blocks![0]).Content);
+        Assert.IsInstanceOfType(conversation[3].Blocks![1], typeof(ThinkingBlock));
+    }
+
+    // ---------- RunShell output trimming ----------
+
+    [TestMethod]
+    public void RunShellTrimOutput_PreservesTailAndStderr()
+    {
+        var stdoutText = new string('x', 80_000) + "TAIL-SENTINEL";
+        var stdout = new CapturedStream(stdoutText, "", stdoutText.Length, stdoutText.Length);
+        var stderr = new CapturedStream("ERR-SENTINEL", "", "ERR-SENTINEL".Length, "ERR-SENTINEL".Length);
+
+        var trimmed = RunShellTool.TrimOutput(stdout, stderr);
+
+        StringAssert.Contains(trimmed.Content, "chars omitted");
+        StringAssert.Contains(trimmed.Content, "TAIL-SENTINEL");
+        StringAssert.Contains(trimmed.Content, "ERR-SENTINEL");
+        Assert.IsTrue(trimmed.StdoutTruncated);
+        Assert.IsFalse(trimmed.StderrTruncated);
+    }
+
+    // ---------- Scoped verification ----------
+
+    [TestMethod]
+    public void ScopeInferredCommand_VitestMapsSrcToTestMirror()
+    {
+        using var t = new TempDir();
+        File.WriteAllText(Path.Combine(t.Root, "package.json"), """{"scripts":{"test":"vitest run"},"devDependencies":{"vitest":"^1"}}""");
+        Directory.CreateDirectory(Path.Combine(t.Root, "test", "agent"));
+        File.WriteAllText(Path.Combine(t.Root, "test", "agent", "Verify.test.ts"), "");
+
+        var scoped = Verification.ScopeInferredCommand(t.Root, "npm test", ["src/agent/Verify.ts"]);
+
+        Assert.IsTrue(scoped.IsScoped);
+        Assert.AreEqual("npx vitest run test/agent/Verify.test.ts", scoped.Command);
+    }
+
+    [TestMethod]
+    public void ResolvePlan_RetainsFullCommandWhenScoped()
+    {
+        using var t = new TempDir();
+        File.WriteAllText(Path.Combine(t.Root, "go.mod"), "module x");
+        File.WriteAllText(Path.Combine(t.Root, "main_test.go"), "package main");
+
+        var plan = Verification.ResolvePlan(t.Root, null, [], ["pkg/a/x.go"]);
+
+        Assert.IsNotNull(plan);
+        Assert.AreEqual("go test ./pkg/a/...", plan!.Command);
+        Assert.AreEqual("go test ./...", plan.FullCommand);
+        Assert.AreEqual("inferred-scoped", plan.Source);
+    }
+
+    // ---------- Import graph / file_deps ----------
+
+    [TestMethod]
+    public void ImportGraph_ResolvesNodeNextImport()
+    {
+        var files = new HashSet<string>(StringComparer.Ordinal) { "src/a.ts", "src/core.ts" };
+        Assert.AreEqual("src/core.ts", ImportGraphBuilder.ResolveImport("./core.js", "src/a.ts", files));
+    }
+
+    [TestMethod]
+    public async Task FileDepsTool_ListsImportersAndImports()
+    {
+        using var t = new TempDir();
+        Directory.CreateDirectory(Path.Combine(t.Root, "src"));
+        File.WriteAllText(Path.Combine(t.Root, "src", "core.ts"), "export const core = 1;");
+        File.WriteAllText(Path.Combine(t.Root, "src", "a.ts"), "import { core } from './core.js';\nexport const a = core;");
+        var tool = new FileDepsTool();
+
+        var result = await tool.ExecuteAsync(
+            new Dictionary<string, object?> { ["path"] = "src/core.ts" },
+            Context(t),
+            CancellationToken.None);
+
+        Assert.IsFalse(result.IsError);
+        StringAssert.Contains(result.Content, "imported by (1):");
+        StringAssert.Contains(result.Content, "src/a.ts");
+    }
+
+    // ---------- Syntax gate ----------
+
+    [TestMethod]
+    public async Task SyntaxGate_RevertsBrokenJsonCreate()
+    {
+        using var t = new TempDir();
+        SyntaxGate.ResetForTests();
+        var tool = new WriteFileTool();
+
+        var result = await tool.ExecuteAsync(
+            new Dictionary<string, object?> { ["path"] = "broken.json", ["content"] = "{ nope" },
+            Context(t),
+            CancellationToken.None);
+
+        Assert.IsTrue(result.IsError);
+        Assert.IsFalse(File.Exists(Path.Combine(t.Root, "broken.json")));
+    }
+
+    private static ToolExecutionContext Context(TempDir t) =>
+        new()
+        {
+            Session = new SessionContext(
+                "test",
+                t.Root,
+                t.Root,
+                t.Root,
+                new ModelConfig("xai", "grok-code-fast-1"),
+                DateTimeOffset.Now,
+                AgentMode.Autocode),
+            Checkpoint = new CheckpointStore(t.Root),
+            ConfirmAsync = (_, _) => Task.FromResult(true)
+        };
 }
 
 internal sealed class TempDir : IDisposable

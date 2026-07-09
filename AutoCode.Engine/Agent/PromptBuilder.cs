@@ -39,8 +39,9 @@ public static class PromptBuilder
         sb.AppendLine("6. Make only the requested changes. Avoid unrelated refactors.");
         sb.AppendLine("7. Do not retry tool failures blindly. Read errors and change approach.");
         sb.AppendLine("8. After file changes, the harness may run verification and feed failures back to you.");
-        sb.AppendLine("9. Respect the safety policy. Do not bypass blocked shell commands.");
-        sb.AppendLine("10. Be concise when reporting results.");
+        sb.AppendLine("9. Reproduce bugs before fixing them when practical: write or run a focused failing test/script first, then fix and re-run it.");
+        sb.AppendLine("10. Respect the safety policy. Do not bypass blocked shell commands.");
+        sb.AppendLine("11. Be concise when reporting results.");
         sb.AppendLine();
         sb.AppendLine("# Tools available");
         foreach (var tool in toolNames.OrderBy(t => t, StringComparer.Ordinal))
@@ -48,11 +49,19 @@ public static class PromptBuilder
             sb.AppendLine($"- `{tool}`");
         }
 
+        if (toolNames.Contains("file_deps"))
+        {
+            sb.AppendLine();
+            sb.AppendLine("Use `file_deps` before editing a shared file when you need to understand its importers and blast radius.");
+        }
+
         if (!string.IsNullOrWhiteSpace(repoMap))
         {
             sb.AppendLine();
             sb.AppendLine("# Repository map");
             sb.AppendLine(repoMap);
+            sb.AppendLine();
+            sb.AppendLine("For large projects, localize first: start from this map, use `find_symbol` and `file_deps` to narrow scope, then read only the relevant file slices.");
         }
 
         foreach (var inst in instructions)

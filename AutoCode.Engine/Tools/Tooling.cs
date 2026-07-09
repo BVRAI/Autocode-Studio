@@ -52,6 +52,7 @@ public sealed class ToolRegistry
         Register(new GrepTool());
         Register(new TodoWriteTool());
         Register(new FindSymbolTool());
+        Register(new FileDepsTool());
         Register(new UseSkillTool());
         Register(new AskUserTool());
         if (config.WebTools.Enabled)

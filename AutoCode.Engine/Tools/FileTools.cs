@@ -155,7 +155,7 @@ public sealed class EditFileTool : ITool
         }
         """));
 
-    public Task<ToolResult> ExecuteAsync(Dictionary<string, object?> args, ToolExecutionContext context, CancellationToken cancellationToken)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, object?> args, ToolExecutionContext context, CancellationToken cancellationToken)
     {
         var path = ToolArgs.RequiredString(args, "path");
         var oldText = ToolArgs.RequiredString(args, "old_text");
@@ -163,7 +163,7 @@ public sealed class EditFileTool : ITool
         var replaceAll = ToolArgs.OptionalBool(args, "replace_all") ?? false;
         if (oldText == newText)
         {
-            return Task.FromResult(new ToolResult("no-op", "old_text equals new_text", true));
+            return new ToolResult("no-op", "old_text equals new_text", true);
         }
 
         var target = PathSafety.ResolveInsideRoot(context.Session.ProjectRoot, path);
@@ -171,28 +171,47 @@ public sealed class EditFileTool : ITool
         var count = CountOccurrences(original, oldText);
         if (count == 0)
         {
-            return Task.FromResult(new ToolResult(
+            return new ToolResult(
                 "old_text not found",
                 $"Could not find old_text in {PathSafety.ToRelative(context.Session.ProjectRoot, target)}. Read the file first and retry with exact text.",
-                true));
+                true);
         }
 
         if (count > 1 && !replaceAll)
         {
-            return Task.FromResult(new ToolResult(
+            return new ToolResult(
                 $"ambiguous ({count} matches)",
                 $"old_text appears {count} times in {PathSafety.ToRelative(context.Session.ProjectRoot, target)}. Provide a larger unique anchor or set replace_all=true.",
-                true));
+                true);
         }
 
         var updated = replaceAll ? original.Replace(oldText, newText) : ReplaceFirst(original, oldText, newText);
         context.Checkpoint?.SnapshotBeforeWrite(target);
         File.WriteAllText(target, updated);
         var rel = PathSafety.ToRelative(context.Session.ProjectRoot, target);
-        return Task.FromResult(new ToolResult(
+        var gate = await SyntaxGate.GateAfterWriteAsync(
+            target,
+            rel,
+            context.Session.ProjectRoot,
+            original,
+            existedBefore: true,
+            content: updated,
+            cancellationToken).ConfigureAwait(false);
+        if (gate is GateOutcome.Reverted reverted)
+        {
+            return reverted.Result;
+        }
+
+        var content = $"OK: {oldText.Length} -> {newText.Length} chars, {count} replacement(s)";
+        if (gate is GateOutcome.KeptWithWarning warning)
+        {
+            content += "\n\n" + warning.Warning;
+        }
+
+        return new ToolResult(
             $"edited {rel} ({(replaceAll ? count + " replacements" : "1 replacement")})",
-            $"OK: {oldText.Length} -> {newText.Length} chars, {count} replacement(s)",
-            Metadata: ToolArgs.Metadata(("replacements", count), ("replaceAll", replaceAll), ("before", original), ("after", updated), ("path", rel))));
+            content,
+            Metadata: ToolArgs.Metadata(("replacements", count), ("replaceAll", replaceAll), ("before", original), ("after", updated), ("path", rel)));
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -232,24 +251,24 @@ public sealed class WriteFileTool : ITool
         }
         """));
 
-    public Task<ToolResult> ExecuteAsync(Dictionary<string, object?> args, ToolExecutionContext context, CancellationToken cancellationToken)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, object?> args, ToolExecutionContext context, CancellationToken cancellationToken)
     {
         var path = ToolArgs.RequiredString(args, "path");
         var content = ToolArgs.RequiredString(args, "content");
         var mode = ToolArgs.OptionalString(args, "mode") ?? "create_only";
         if (mode is not ("create_only" or "overwrite"))
         {
-            return Task.FromResult(new ToolResult("bad mode", $"unknown mode: {mode}", true));
+            return new ToolResult("bad mode", $"unknown mode: {mode}", true);
         }
 
         var target = PathSafety.ResolveInsideRoot(context.Session.ProjectRoot, path);
         var exists = File.Exists(target);
         if (exists && mode == "create_only")
         {
-            return Task.FromResult(new ToolResult(
+            return new ToolResult(
                 "file exists",
                 $"{PathSafety.ToRelative(context.Session.ProjectRoot, target)} already exists. Use edit_file or set mode=overwrite.",
-                true));
+                true);
         }
 
         var before = exists ? File.ReadAllText(target) : "";
@@ -257,10 +276,24 @@ public sealed class WriteFileTool : ITool
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         File.WriteAllText(target, content);
         var rel = PathSafety.ToRelative(context.Session.ProjectRoot, target);
-        return Task.FromResult(new ToolResult(
+        var gate = await SyntaxGate.GateAfterWriteAsync(
+            target,
+            rel,
+            context.Session.ProjectRoot,
+            before,
+            exists,
+            content,
+            cancellationToken).ConfigureAwait(false);
+        if (gate is GateOutcome.Reverted reverted)
+        {
+            return reverted.Result;
+        }
+
+        var output = gate is GateOutcome.KeptWithWarning warning ? "OK\n\n" + warning.Warning : "OK";
+        return new ToolResult(
             $"{(exists ? "overwrote" : "created")} {rel} ({content.Length} bytes)",
-            "OK",
-            Metadata: ToolArgs.Metadata(("bytes", content.Length), ("mode", mode), ("existed", exists), ("before", before), ("after", content), ("path", rel))));
+            output,
+            Metadata: ToolArgs.Metadata(("bytes", content.Length), ("mode", mode), ("existed", exists), ("before", before), ("after", content), ("path", rel)));
     }
 }
 

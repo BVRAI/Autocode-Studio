@@ -24,6 +24,11 @@ public sealed class OpenAiCompatProvider : ILlmProvider
 
     public string Name { get; }
 
+    private ReasoningEcho ReasoningEchoMode =>
+        _isOpenRouter ? ReasoningEcho.ReasoningDetails :
+        Name.Equals("xai", StringComparison.OrdinalIgnoreCase) ? ReasoningEcho.ReasoningContent :
+        ReasoningEcho.None;
+
     public async Task<CompletionResponse> CompleteAsync(CompletionRequest request, CancellationToken cancellationToken)
     {
         if (_auth.Kind == AuthKind.Missing)
@@ -33,7 +38,7 @@ public sealed class OpenAiCompatProvider : ILlmProvider
 
         var baseUrl = _auth.Kind == AuthKind.Proxy ? _auth.BaseUrl! : _defaultBaseUrl;
         using var http = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/chat/completions");
-        http.Content = new StringContent(BuildBody(request).ToJsonString(), Encoding.UTF8, "application/json");
+        http.Content = new StringContent(BuildBody(request, ReasoningEchoMode).ToJsonString(), Encoding.UTF8, "application/json");
         http.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (_auth.Kind == AuthKind.Byok)
         {
@@ -60,7 +65,7 @@ public sealed class OpenAiCompatProvider : ILlmProvider
         return ParseResponse(text);
     }
 
-    private static JsonObject BuildBody(CompletionRequest request)
+    private static JsonObject BuildBody(CompletionRequest request, ReasoningEcho reasoningEcho)
     {
         var systemText = string.IsNullOrWhiteSpace(request.SystemVolatile)
             ? request.System
@@ -68,7 +73,7 @@ public sealed class OpenAiCompatProvider : ILlmProvider
         var messages = new JsonArray { new JsonObject { ["role"] = "system", ["content"] = systemText } };
         foreach (var message in request.Messages)
         {
-            foreach (var converted in ToOpenAiMessages(message))
+            foreach (var converted in ToOpenAiMessages(message, reasoningEcho))
             {
                 messages.Add(converted);
             }
@@ -114,7 +119,7 @@ public sealed class OpenAiCompatProvider : ILlmProvider
         return body;
     }
 
-    private static IEnumerable<JsonObject> ToOpenAiMessages(AgentMessage message)
+    private static IEnumerable<JsonObject> ToOpenAiMessages(AgentMessage message, ReasoningEcho reasoningEcho)
     {
         if (message.Text is not null)
         {
@@ -125,11 +130,11 @@ public sealed class OpenAiCompatProvider : ILlmProvider
         var blocks = message.Blocks ?? [];
         if (message.Role == "assistant")
         {
-            var text = string.Join("\n", blocks.OfType<TextBlock>().Select(t => t.Text));
+            var assistantText = string.Join("\n", blocks.OfType<TextBlock>().Select(t => t.Text));
             var outMessage = new JsonObject
             {
                 ["role"] = "assistant",
-                ["content"] = string.IsNullOrWhiteSpace(text) ? null : text
+                ["content"] = string.IsNullOrWhiteSpace(assistantText) ? null : assistantText
             };
             var toolCalls = new JsonArray();
             foreach (var tool in blocks.OfType<ToolUseBlock>())
@@ -149,6 +154,43 @@ public sealed class OpenAiCompatProvider : ILlmProvider
             if (toolCalls.Count > 0)
             {
                 outMessage["tool_calls"] = toolCalls;
+            }
+
+            var thinking = blocks.OfType<ThinkingBlock>().ToList();
+            if (thinking.Count > 0 && reasoningEcho != ReasoningEcho.None)
+            {
+                if (reasoningEcho == ReasoningEcho.ReasoningContent)
+                {
+                    var reasoningTextEcho = string.Join("\n", thinking.Select(t => t.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
+                    if (!string.IsNullOrWhiteSpace(reasoningTextEcho))
+                    {
+                        outMessage["reasoning_content"] = reasoningTextEcho;
+                    }
+                }
+                else
+                {
+                    var details = new JsonArray();
+                    foreach (var node in thinking.Select(t => t.Opaque).Where(n => n is JsonArray).Cast<JsonArray>())
+                    {
+                        foreach (var item in node)
+                        {
+                            details.Add(item?.DeepClone());
+                        }
+                    }
+
+                    if (details.Count > 0)
+                    {
+                        outMessage["reasoning_details"] = details;
+                    }
+                    else
+                    {
+                        var fallbackReasoningText = string.Join("\n", thinking.Select(t => t.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
+                        if (!string.IsNullOrWhiteSpace(fallbackReasoningText))
+                        {
+                            outMessage["reasoning"] = fallbackReasoningText;
+                        }
+                    }
+                }
             }
 
             yield return outMessage;
@@ -207,6 +249,27 @@ public sealed class OpenAiCompatProvider : ILlmProvider
 
         var message = choice.GetProperty("message");
         var blocks = new List<ContentBlock>();
+        var reasoningText = "";
+        if (message.TryGetProperty("reasoning_content", out var reasoningContent) && reasoningContent.ValueKind == JsonValueKind.String)
+        {
+            reasoningText = reasoningContent.GetString() ?? "";
+        }
+        else if (message.TryGetProperty("reasoning", out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
+        {
+            reasoningText = reasoning.GetString() ?? "";
+        }
+
+        JsonNode? opaque = null;
+        if (message.TryGetProperty("reasoning_details", out var details) && details.ValueKind == JsonValueKind.Array)
+        {
+            opaque = JsonNode.Parse(details.GetRawText());
+        }
+
+        if (!string.IsNullOrWhiteSpace(reasoningText) || opaque is not null)
+        {
+            blocks.Add(new ThinkingBlock(reasoningText, Opaque: opaque));
+        }
+
         if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
         {
             var text = content.GetString();
@@ -235,8 +298,8 @@ public sealed class OpenAiCompatProvider : ILlmProvider
             ? new CompletionUsage(
                 GetInt(usageElement, "prompt_tokens"),
                 GetInt(usageElement, "completion_tokens"),
-                usageElement.TryGetProperty("prompt_tokens_details", out var details)
-                    ? GetInt(details, "cached_tokens")
+                usageElement.TryGetProperty("prompt_tokens_details", out var tokenDetails)
+                    ? GetInt(tokenDetails, "cached_tokens")
                     : 0)
             : new CompletionUsage(0, 0);
 
@@ -266,4 +329,11 @@ public sealed class OpenAiCompatProvider : ILlmProvider
         };
 
     private static string Trim(string text, int max) => text.Length <= max ? text : text[..max];
+
+    private enum ReasoningEcho
+    {
+        None,
+        ReasoningContent,
+        ReasoningDetails
+    }
 }

@@ -8,11 +8,14 @@ namespace AutoCode.Engine.Agent;
 
 public sealed class AgentLoop
 {
-    private const int MaxIterations = 40;
-    private const int MaxVerifyRounds = 2;
+    private const int MaxIterations = 200;
+    private const int MaxVerifyRounds = 3;
     private const int MaxRetriesPerTool = 3;
     private const int LoopDetectWindow = 10;
     private const int LoopDetectThreshold = 3;
+    private const string MaskedToolResultMarker = "[old tool output cleared to save context - re-run the tool if needed]";
+    private const int MaskMinChars = 500;
+    private const int MaskMinTotalSavings = 2_000;
 
     private static readonly HashSet<string> MutatingTools = new(StringComparer.Ordinal)
     {
@@ -116,15 +119,46 @@ public sealed class AgentLoop
             }
 
             var instructions = ProjectInstructions.Load(context.ProjectRoot);
-            var command = Verification.ResolveCommand(context.ProjectRoot, _config.VerifyCommand, instructions, filesChanged.ToList());
-            if (command is null)
+            var plan = Verification.ResolvePlan(context.ProjectRoot, _config.VerifyCommand, instructions, filesChanged.ToList());
+            if (plan is null)
             {
                 break;
             }
 
-            await EmitAsync(new VerificationEvent(DateTimeOffset.Now, command, null, "running")).ConfigureAwait(false);
-            var verify = await Verification.RunAsync(command, context.ProjectRoot, cancellationToken).ConfigureAwait(false);
-            await EmitAsync(new VerificationEvent(DateTimeOffset.Now, command, verify.Passed, verify.Output)).ConfigureAwait(false);
+            await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.Command, null, "running")).ConfigureAwait(false);
+            var verify = await Verification.RunAsync(plan.Command, context.ProjectRoot, cancellationToken).ConfigureAwait(false);
+            await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.Command, verify.Passed, verify.Output)).ConfigureAwait(false);
+
+            if (!verify.Passed && plan.FullCommand is not null && verify.Output.Contains("No test files found", StringComparison.OrdinalIgnoreCase))
+            {
+                await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.FullCommand, null, "running")).ConfigureAwait(false);
+                verify = await Verification.RunAsync(plan.FullCommand, context.ProjectRoot, cancellationToken).ConfigureAwait(false);
+                await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.FullCommand, verify.Passed, verify.Output)).ConfigureAwait(false);
+                plan = plan with { Command = plan.FullCommand, FullCommand = null };
+            }
+
+            if (verify.Passed && plan.FullCommand is not null)
+            {
+                await EmitAsync(new StatusEvent(DateTimeOffset.Now, $"focused tests passed ({plan.Command})")).ConfigureAwait(false);
+                await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.FullCommand, null, "running")).ConfigureAwait(false);
+                var fullRun = await Verification.RunAsync(plan.FullCommand, context.ProjectRoot, cancellationToken).ConfigureAwait(false);
+                await EmitAsync(new VerificationEvent(DateTimeOffset.Now, plan.FullCommand, fullRun.Passed, fullRun.Output)).ConfigureAwait(false);
+                if (fullRun.Passed)
+                {
+                    break;
+                }
+
+                if (round == MaxVerifyRounds)
+                {
+                    await EmitAsync(new StatusEvent(DateTimeOffset.Now, $"full suite still failing after {MaxVerifyRounds} fix attempts")).ConfigureAwait(false);
+                    break;
+                }
+
+                _conversation.Add(AgentMessage.User(
+                    $"The focused tests for your changed files pass, but the full suite `{plan.FullCommand}` fails (exit {fullRun.ExitCode?.ToString() ?? "?"}) - likely a regression elsewhere caused by your changes:\n\n```\n{fullRun.Output}\n```\n\nFix the regressions, then stop. If these failures are pre-existing and unrelated to your changes, say so briefly and stop."));
+                continue;
+            }
+
             if (verify.Passed)
             {
                 break;
@@ -137,7 +171,7 @@ public sealed class AgentLoop
             }
 
             _conversation.Add(AgentMessage.User(
-                $"The verification command `{command}` failed (exit {verify.ExitCode?.ToString() ?? "?"}) after your changes:\n\n```\n{verify.Output}\n```\n\nFix the failures, then stop. If failures are pre-existing and unrelated, say so briefly and stop."));
+                $"The verification command `{plan.Command}` failed (exit {verify.ExitCode?.ToString() ?? "?"}) after your changes:\n\n```\n{verify.Output}\n```\n\nFix the failures, then stop. If failures are pre-existing and unrelated, say so briefly and stop."));
         }
 
         var usageLine = $"in: {totals.Input}, out: {totals.Output}";
@@ -168,12 +202,21 @@ public sealed class AgentLoop
                 return mutated;
             }
 
-            // Auto-compact before the call if the live context is getting large.
+            // Two-tier context management: cheaply clear old tool outputs before paying
+            // for a full summarizing compaction.
             if (ContextWindow.ShouldAutoCompact(_lastInputTokens, context.Model.Provider, context.Model.Model))
             {
                 await EmitAsync(new StatusEvent(DateTimeOffset.Now, "compacting context")).ConfigureAwait(false);
                 await CompactConversationAsync(context, cancellationToken).ConfigureAwait(false);
                 _lastInputTokens = 0;
+            }
+            else if (ContextWindow.ShouldMaskObservations(_lastInputTokens, context.Model.Provider, context.Model.Model))
+            {
+                var masked = MaskOldToolResults(_conversation);
+                if (masked > 0)
+                {
+                    await EmitAsync(new StatusEvent(DateTimeOffset.Now, $"cleared {masked} old tool outputs to save context")).ConfigureAwait(false);
+                }
             }
 
             // Cost-budget backstop: stop before paying for another call once the turn's spend
@@ -431,6 +474,9 @@ public sealed class AgentLoop
                 case ToolResultBlock r:
                     parts.Add($"[tool_result {Truncate(r.Content, 200)}]");
                     break;
+                case ThinkingBlock:
+                    parts.Add("[thinking]");
+                    break;
             }
         }
 
@@ -476,6 +522,54 @@ public sealed class AgentLoop
         {
             return ToolArgs.Json(input);
         }
+    }
+
+    internal static int MaskOldToolResults(List<AgentMessage> conversation, int keepPairs = 2)
+    {
+        var cut = FindCompactionCut(conversation, keepPairs);
+        if (cut <= 0)
+        {
+            return 0;
+        }
+
+        var candidates = new List<(List<ContentBlock> Blocks, int Index, ToolResultBlock Result)>();
+        var savings = 0;
+        for (var i = 0; i < cut; i++)
+        {
+            var message = conversation[i];
+            if (message.Role != "user" || message.Blocks is null)
+            {
+                continue;
+            }
+
+            for (var j = 0; j < message.Blocks.Count; j++)
+            {
+                if (message.Blocks[j] is not ToolResultBlock result)
+                {
+                    continue;
+                }
+
+                if (result.Content.Length <= MaskMinChars || result.Content == MaskedToolResultMarker)
+                {
+                    continue;
+                }
+
+                candidates.Add((message.Blocks, j, result));
+                savings += result.Content.Length - MaskedToolResultMarker.Length;
+            }
+        }
+
+        if (savings < MaskMinTotalSavings)
+        {
+            return 0;
+        }
+
+        foreach (var (blocks, index, result) in candidates)
+        {
+            blocks[index] = new ToolResultBlock(result.ToolUseId, MaskedToolResultMarker, result.IsError);
+        }
+
+        return candidates.Count;
     }
 
     private Task EmitAsync(AgentEvent evt) => _emitAsync(evt);

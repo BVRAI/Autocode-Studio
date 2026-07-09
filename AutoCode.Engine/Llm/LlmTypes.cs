@@ -27,6 +27,12 @@ public sealed record ToolResultBlock(string ToolUseId, string Content, bool IsEr
 
 public sealed record ImageBlock(string MediaType, string Data) : ContentBlock("image");
 
+public sealed record ThinkingBlock(
+    string Text,
+    string? Signature = null,
+    string? RedactedData = null,
+    JsonNode? Opaque = null) : ContentBlock("thinking");
+
 public sealed record ToolSchema(string Name, string Description, JsonNode InputSchema);
 
 public sealed record CompletionRequest(

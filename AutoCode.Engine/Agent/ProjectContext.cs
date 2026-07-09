@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using AutoCode.Engine.Tools;
 
 namespace AutoCode.Engine.Agent;
@@ -7,6 +8,18 @@ public sealed record ProjectContextInfo(IReadOnlyList<string> Types, bool IsGitR
 
 public static class ProjectContext
 {
+    private const int MaxDigestBytes = 6_000;
+    private const int MaxFiles = 400;
+    private const int MaxSymbolsPerFile = 10;
+    private const int MaxReadBytes = 64_000;
+    private const double PhaseOneBudgetFraction = 0.75;
+    private static readonly Dictionary<string, RepoMapData> RepoMapCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> SourceExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+        ".cs", ".py", ".rs", ".go", ".java", ".kt", ".cpp", ".cc", ".cxx", ".h", ".hpp"
+    };
+
     public static ProjectContextInfo Detect(string root)
     {
         var types = new List<string>();
@@ -20,13 +33,31 @@ public static class ProjectContext
         return new ProjectContextInfo(types, Directory.Exists(Path.Combine(root, ".git")));
     }
 
-    public static string RepoMap(string root, int maxFiles = 180)
+    public static string RepoMap(string root)
+        => GetRepoMapInfo(root).Digest;
+
+    public static ImportGraph GetImportGraph(string root)
+        => GetRepoMapInfo(root).Graph;
+
+    private static RepoMapData GetRepoMapInfo(string root)
     {
-        var sb = new StringBuilder();
-        var count = 0;
+        var full = Path.GetFullPath(root);
+        if (RepoMapCache.TryGetValue(full, out var cached))
+        {
+            return cached;
+        }
+
+        var info = BuildRepoMapInfo(full);
+        RepoMapCache[full] = info;
+        return info;
+    }
+
+    private static RepoMapData BuildRepoMapInfo(string root)
+    {
+        var files = new List<string>();
         void Walk(string dir, int depth)
         {
-            if (count >= maxFiles || depth > 5)
+            if (files.Count >= MaxFiles || depth > 12)
             {
                 return;
             }
@@ -45,10 +76,13 @@ public static class ProjectContext
                 }
                 else
                 {
-                    var rel = Path.GetRelativePath(root, entry).Replace('\\', '/');
-                    sb.AppendLine(rel);
-                    count++;
-                    if (count >= maxFiles)
+                    if (!SourceExtensions.Contains(Path.GetExtension(entry)))
+                    {
+                        continue;
+                    }
+
+                    files.Add(entry);
+                    if (files.Count >= MaxFiles)
                     {
                         return;
                     }
@@ -58,13 +92,159 @@ public static class ProjectContext
 
         try
         {
-            Walk(root, 0);
+            if (Directory.Exists(root))
+            {
+                Walk(root, 0);
+            }
         }
         catch
         {
-            return "";
+            return RepoMapData.Empty;
         }
 
-        return sb.ToString().Trim();
+        files.Sort(StringComparer.OrdinalIgnoreCase);
+        var rels = new List<string>();
+        var textByRel = new Dictionary<string, string>(StringComparer.Ordinal);
+        var symbolsByRel = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+        foreach (var abs in files)
+        {
+            var rel = Path.GetRelativePath(root, abs).Replace('\\', '/');
+            rels.Add(rel);
+            var text = "";
+            try
+            {
+                text = File.ReadAllText(abs);
+            }
+            catch
+            {
+                // Unreadable files still appear in the digest.
+            }
+
+            if (text.Length > MaxReadBytes)
+            {
+                text = text[..MaxReadBytes];
+            }
+
+            textByRel[rel] = text;
+            symbolsByRel[rel] = ExtractSymbolsFromText(text, Path.GetExtension(abs));
+        }
+
+        var graph = ImportGraphBuilder.Build(rels, rel => textByRel.GetValueOrDefault(rel));
+        int InDegree(string rel) => graph.Importers.TryGetValue(rel, out var list) ? list.Count : 0;
+        double Score(string rel) => graph.Rank.GetValueOrDefault(rel) * (1 + InDegree(rel));
+        var ordered = rels
+            .OrderByDescending(Score)
+            .ThenByDescending(InDegree)
+            .ThenBy(r => r, StringComparer.Ordinal)
+            .ToList();
+
+        var lines = new List<string>();
+        var bytes = 0;
+        var phaseOneBudget = (int)(MaxDigestBytes * PhaseOneBudgetFraction);
+        var index = 0;
+        for (; index < ordered.Count; index++)
+        {
+            var rel = ordered[index];
+            var symbols = symbolsByRel.GetValueOrDefault(rel) ?? [];
+            var indegree = InDegree(rel);
+            var line = (symbols.Count > 0 ? $"{rel}  -  {string.Join(", ", symbols)}" : rel)
+                + (indegree >= 2 ? $"  (imported by {indegree})" : "");
+            if (bytes + line.Length + 1 > phaseOneBudget)
+            {
+                break;
+            }
+
+            lines.Add(line);
+            bytes += line.Length + 1;
+        }
+
+        var truncated = false;
+        if (index < ordered.Count)
+        {
+            var rest = ordered.Skip(index).OrderBy(r => r, StringComparer.Ordinal).ToList();
+            var header = "-- other files --";
+            lines.Add(header);
+            bytes += header.Length + 1;
+            var current = "";
+            foreach (var rel in rest)
+            {
+                var candidate = current.Length == 0 ? rel : current + ", " + rel;
+                if (candidate.Length > 100 && current.Length > 0)
+                {
+                    if (bytes + current.Length + 1 > MaxDigestBytes)
+                    {
+                        truncated = true;
+                        current = "";
+                        break;
+                    }
+
+                    lines.Add(current);
+                    bytes += current.Length + 1;
+                    current = rel;
+                }
+                else
+                {
+                    current = candidate;
+                }
+            }
+
+            if (current.Length > 0)
+            {
+                if (bytes + current.Length + 1 > MaxDigestBytes)
+                {
+                    truncated = true;
+                }
+                else
+                {
+                    lines.Add(current);
+                }
+            }
+
+            if (lines.Count > 0 && lines[^1] == header)
+            {
+                lines.RemoveAt(lines.Count - 1);
+                truncated = true;
+            }
+        }
+
+        var digest = lines.Count == 0 ? "" : string.Join(Environment.NewLine, lines) + (truncated ? Environment.NewLine + "... (repo map truncated)" : "");
+        return new RepoMapData(digest, graph);
+    }
+
+    private static IReadOnlyList<string> ExtractSymbolsFromText(string text, string ext)
+    {
+        var pattern = ext.ToLowerInvariant() switch
+        {
+            ".cs" => @"^\s*(?:public|private|internal|protected|static|sealed|abstract|partial|readonly|\s)*\s*(?:class|interface|record|struct|enum)\s+([A-Za-z_]\w*)",
+            ".ts" or ".tsx" or ".js" or ".jsx" or ".mjs" or ".cjs" => @"^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|type|const|let|var)\s+([A-Za-z_$][\w$]*)",
+            ".py" => @"^(?:def|class)\s+([A-Za-z_]\w*)",
+            ".rs" => @"^\s*(?:pub\s+)?(?:fn|struct|enum|trait|impl)\s+([A-Za-z_]\w*)",
+            ".go" => @"^\s*(?:func|type)\s+(?:\([^)]+\)\s*)?([A-Za-z_]\w*)",
+            ".java" or ".kt" => @"^\s*(?:public|private|protected|internal|abstract|final|open|\s)*\s*(?:class|interface|enum|object|fun)\s+([A-Za-z_]\w*)",
+            ".cpp" or ".cc" or ".cxx" or ".h" or ".hpp" => @"^\s*(?:class|struct|enum)\s+([A-Za-z_]\w*)",
+            _ => ""
+        };
+        if (string.IsNullOrEmpty(pattern))
+        {
+            return [];
+        }
+
+        var names = new List<string>();
+        foreach (Match match in Regex.Matches(text, pattern, RegexOptions.Multiline))
+        {
+            var name = match.Groups[1].Value;
+            if (!names.Contains(name, StringComparer.Ordinal) && names.Count < MaxSymbolsPerFile)
+            {
+                names.Add(name);
+            }
+        }
+
+        return names;
+    }
+
+    private sealed record RepoMapData(string Digest, ImportGraph Graph)
+    {
+        public static readonly RepoMapData Empty = new("", new ImportGraph([], new Dictionary<string, IReadOnlyList<string>>(), new Dictionary<string, IReadOnlyList<string>>(), new Dictionary<string, double>()));
     }
 }
