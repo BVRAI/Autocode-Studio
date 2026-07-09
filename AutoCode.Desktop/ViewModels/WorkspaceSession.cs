@@ -23,9 +23,14 @@ public sealed class WorkspaceSession : ObservableObject
     /// <summary>Mutable session config (model/mode applied per turn). Set in BuildLoop.</summary>
     public SessionContext? Context { get; set; }
 
-    /// <summary>Which agent drives this workspace: "builtin" | "claude-code" | "codex". Chosen at create
-    /// time; <see cref="MainViewModel"/>'s WireLoop builds the matching <see cref="IAgentBackend"/>.</summary>
-    public string AgentId { get; set; } = "builtin";
+    /// <summary>Which agent drives this workspace: "builtin" | "claude-code" | "codex". Set at create
+    /// time or via the composer's agent picker; WireLoop builds the matching <see cref="IAgentBackend"/>.</summary>
+    private string _agentId = "builtin";
+    public string AgentId
+    {
+        get => _agentId;
+        set => Set(ref _agentId, value);
+    }
 
     /// <summary>The agent driving this workspace — built-in engine or an external CLI (Claude Code / Codex).</summary>
     public IAgentBackend? Backend { get; set; }
@@ -111,7 +116,37 @@ public sealed class WorkspaceSession : ObservableObject
     public string ChatTitle
     {
         get => _chatTitle;
-        set => Set(ref _chatTitle, value);
+        set
+        {
+            if (Set(ref _chatTitle, value) && !_isEditingTitleHeader && !_isEditingTitleSidebar)
+            {
+                EditableTitle = value;
+            }
+        }
+    }
+
+    // The top-bar editor and the sidebar WORKSPACES-row editor need separate flags: one shared
+    // flag opens both TextBoxes at once and their focus grabs cancel each other (the loser's
+    // LostKeyboardFocus commits and closes the edit ~20ms after it opens).
+    private bool _isEditingTitleHeader;
+    public bool IsEditingTitleHeader
+    {
+        get => _isEditingTitleHeader;
+        set => Set(ref _isEditingTitleHeader, value);
+    }
+
+    private bool _isEditingTitleSidebar;
+    public bool IsEditingTitleSidebar
+    {
+        get => _isEditingTitleSidebar;
+        set => Set(ref _isEditingTitleSidebar, value);
+    }
+
+    private string _editableTitle = "New session";
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => Set(ref _editableTitle, value);
     }
 
     private string _chatSubtitle = "";

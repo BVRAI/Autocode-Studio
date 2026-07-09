@@ -35,4 +35,10 @@ public interface IAgentBackend
 
     /// <summary>Clear the conversation; returns the number of entries cleared.</summary>
     int ClearConversation();
+
+    /// <summary>The backend's own continuity handle (Claude Code session id / Codex thread id), if it
+    /// has one. The shell persists it in the session sidecar and restores it on reopen so an external
+    /// CLI conversation survives closing the workspace. Null for the built-in engine (its history
+    /// rehydrates via <see cref="LoadHistory"/>).</summary>
+    string? ResumeId { get; set; }
 }

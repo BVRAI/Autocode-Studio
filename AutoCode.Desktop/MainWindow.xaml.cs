@@ -59,6 +59,8 @@ public partial class MainWindow : Window
         ApplyKeepAwake(_config.KeepAwakeEnabled);
         _vm.IsKeepAwake = _config.KeepAwakeEnabled;
 
+        InitEcosystems();
+
         try { await _firebase.TryRestoreSessionAsync(); } catch { /* offline / corrupt session */ }
         RefreshAccountUi();
 
@@ -194,6 +196,14 @@ public partial class MainWindow : Window
             RefreshUsage(session);
             RefreshFiles(session);
 
+            // External CLI agents get their continuity handle (Claude session / Codex thread id)
+            // during the first turn — after the sidecar was written. Re-persist so reopen resumes.
+            if (session.Backend?.ResumeId is not null
+                && System.IO.File.Exists(System.IO.Path.Combine(session.SessionDir, "session.json")))
+            {
+                WriteSidecar(session);
+            }
+
             // In auto-branch mode, snapshot this turn's edits as a commit on the session's branch.
             if (session.WorktreePath is not null)
             {
@@ -313,8 +323,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Agent backend requested on the command line via <c>--agent &lt;id&gt;</c>
-    /// ("builtin" | "claude-code" | "codex"), applied to startup workspaces. Defaults to "builtin".</summary>
-    private static string StartupAgentId()
+    /// ("builtin" | "claude-code" | "codex"), applied to startup workspaces. Null when absent
+    /// (StartNewSession then falls back to the configured default).</summary>
+    private static string? StartupAgentId()
     {
         var args = Environment.GetCommandLineArgs();
         for (var i = 1; i < args.Length - 1; i++)
@@ -325,7 +336,7 @@ public partial class MainWindow : Window
             }
         }
 
-        return "builtin";
+        return null;
     }
 
     private static string DefaultProjectRoot()

@@ -17,6 +17,7 @@
     <Resource Include="Assets\automax-dark.ico" />
     <Resource Include="Assets\automax-dark.png" />
     <Resource Include="Assets\bvrai-logo.png" />
+    <Resource Include="Assets\bvrai-logo-black.png" />
     <Resource Include="Assets\bvrai-logo.ico" />
     <Resource Include="Assets\automax-light.ico" />
     <Resource Include="Assets\automax-light.png" />

@@ -27,4 +27,11 @@ public sealed class BuiltinAgentBackend : IAgentBackend
     public void LoadHistory(IEnumerable<(string Role, string Text)> history) => _loop.LoadHistory(history);
 
     public int ClearConversation() => _loop.ClearConversation();
+
+    // The built-in engine rehydrates via LoadHistory; it has no external continuity handle.
+    public string? ResumeId
+    {
+        get => null;
+        set { }
+    }
 }

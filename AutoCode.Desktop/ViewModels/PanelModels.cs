@@ -3,6 +3,15 @@ using System.Windows.Input;
 
 namespace AutoCode.Desktop.ViewModels;
 
+/// <summary>An ecosystem row in the sidebar (bare list in Phase 1; grouping arrives in Phase 2).
+/// Rows are rebuilt wholesale on registry changes, so init-only properties suffice.</summary>
+public sealed class EcosystemNode
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string MemberCountText { get; init; } = "";
+}
+
 /// <summary>A project row in the sidebar that groups its sessions.</summary>
 public sealed class ProjectNode : ObservableObject
 {
@@ -26,12 +35,43 @@ public sealed class ProjectNode : ObservableObject
 public sealed class SessionNode : ObservableObject
 {
     private bool _isActive;
+    private bool _isEditingTitle;
     private string _relativeTime = "";
+    private string _title = "";
+    private string _editableTitle = "";
 
     public string Id { get; init; } = "";
-    public string Title { get; init; } = "";
+
+    public string Title
+    {
+        get => _title;
+        set
+        {
+            if (Set(ref _title, value) && !_isEditingTitle)
+            {
+                EditableTitle = value;
+            }
+        }
+    }
+
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => Set(ref _editableTitle, value);
+    }
+
+    public bool IsEditingTitle
+    {
+        get => _isEditingTitle;
+        set => Set(ref _isEditingTitle, value);
+    }
+
     public string ProjectRoot { get; init; } = "";
     public string SessionDir { get; init; } = "";
+    public string Model { get; init; } = "";
+    public string AgentId { get; init; } = "builtin";
+    public string? ExternalResumeId { get; init; }
+    public DateTimeOffset StartedAt { get; init; }
 
     public string? GitBranch { get; init; }
     public string? GitWorktreePath { get; init; }

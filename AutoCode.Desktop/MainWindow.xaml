@@ -40,7 +40,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Image Source="pack://application:,,,/AutoCode.Desktop;component/Assets/bvrai-logo.png"
+                    <Image Source="pack://application:,,,/AutoCode.Desktop;component/Assets/bvrai-logo-black.png"
                            Width="23" Height="23" VerticalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="AutoCode Studio" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -257,6 +257,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}"
+                                                    PreviewMouseLeftButtonDown="WorkspaceTitle_PreviewMouseLeftButtonDown"
                                                     AutomationProperties.Name="{Binding ProjectRootShort}"
                                                     Command="{Binding DataContext.ActivateSessionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
@@ -265,7 +266,24 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding ChatTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
+                                                    <Grid Grid.Column="0">
+                                                        <TextBlock Text="{Binding ChatTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsEditingTitleSidebar}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitleSidebar, Converter={StaticResource BoolToVis}}" Focusable="True" Panel.ZIndex="1"
+                                                                 FontSize="13" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
+                                                                 VerticalAlignment="Center" MinWidth="24" CaretBrush="{DynamicResource TextBrush}"
+                                                                 KeyDown="WorkspaceTitleEditor_KeyDown" LostKeyboardFocus="WorkspaceTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
+                                                    </Grid>
                                                     <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
                                                              Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}"/>
                                                 </Grid>
@@ -281,12 +299,34 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
+                            <!-- Bare ecosystems list (Phase 1); grouping + styling arrive with Phase 2's design pass. -->
+                            <StackPanel Visibility="{Binding HasEcosystems, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                                <ItemsControl ItemsSource="{Binding Ecosystems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:EcosystemNode}">
+                                            <Button Style="{StaticResource SidebarSessionStyle}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                               FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
                             <TextBlock Text="{DynamicResource L_Projects}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
                             <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:ProjectNode}">
                                         <StackPanel>
-                                            <Button Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}">
+                                            <Button Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="ProjectRow_RightClick">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ctl:IconGlyph x:Name="PChevIcon" Geometry="{StaticResource IconChevron}" Width="13" Height="13" Margin="0,0,7,0"
                                                                    Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
@@ -301,14 +341,31 @@
                                                           Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="{x:Type vm:SessionNode}">
-                                                        <Button Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}" Command="{Binding OpenCommand}">
+                                                        <Button Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}" Command="{Binding OpenCommand}" PreviewMouseLeftButtonDown="SavedSessionTitle_PreviewMouseLeftButtonDown">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*"/>
                                                                     <ColumnDefinition Width="Auto"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis"
-                                                                           FontSize="13" VerticalAlignment="Center"/>
+                                                                <Grid Grid.Column="0">
+                                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                                               FontSize="13" VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                    <TextBox Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitle, Converter={StaticResource BoolToVis}}" Focusable="True" Panel.ZIndex="1"
+                                                                             FontSize="13" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
+                                                                             VerticalAlignment="Center" MinWidth="24" CaretBrush="{DynamicResource TextBrush}"
+                                                                             KeyDown="SavedTitleEditor_KeyDown" LostKeyboardFocus="SavedTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
+                                                                </Grid>
                                                                 <TextBlock Grid.Column="1" Text="{Binding RelativeTime}" VerticalAlignment="Center" Margin="8,0,0,0"
                                                                            FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"
                                                                            Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
@@ -405,10 +462,41 @@
                             <ctl:IconGlyph Geometry="{StaticResource IconMenu}" Width="18" Height="18"/>
                         </Button>
 
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
-                            <TextBlock Text="{Binding ChatTitle}" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <Grid Grid.Column="1" DataContext="{Binding Active}" Background="Transparent" VerticalAlignment="Center" Margin="6,0,0,0" PreviewMouseLeftButtonDown="HeaderTitle_PreviewMouseLeftButtonDown">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding ChatTitle}" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditingTitleHeader}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <!-- FallbackValue keeps the editor collapsed while Active is null (startup) -->
+                            <TextBox Grid.Column="0" Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitleHeader, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" Focusable="True" Panel.ZIndex="1"
+                                     FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
+                                     VerticalAlignment="Center" MinWidth="32" CaretBrush="{DynamicResource TextBrush}"
+                                     KeyDown="HeaderTitleEditor_KeyDown" LostKeyboardFocus="HeaderTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditingTitleHeader}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
 
                         <Button Grid.Column="3" x:Name="ChooseProjectButton" AutomationProperties.AutomationId="ChooseProjectButton"
                                 Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,8,0"
@@ -507,6 +595,14 @@
                                         <StackPanel Orientation="Horizontal">
                                             <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
                                             <TextBlock Text="{Binding ModelLabel}" VerticalAlignment="Center"/>
+                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="AgentPill" AutomationProperties.AutomationId="AgentPill" Style="{StaticResource PillButtonStyle}" Margin="7,0,0,0" Click="AgentPill_Click"
+                                            ToolTip="{DynamicResource L_Tooltip_Agent}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                                            <TextBlock Text="{Binding AgentLabel}" VerticalAlignment="Center"/>
                                             <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
@@ -661,6 +757,14 @@
         </Grid>
 
         <!-- ============================= POPUPS ============================= -->
+        <!-- Right-click menu for sidebar project/ecosystem rows; content built in code
+             (BuildProjectMenu). MousePoint placement = opens at the cursor, flips at edges. -->
+        <Popup x:Name="ProjectMenuPopup" StaysOpen="False" Placement="MousePoint" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="220">
+                <StackPanel x:Name="ProjectMenuPanel"/>
+            </Border>
+        </Popup>
+
         <Popup x:Name="ModePopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModePill}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
                 <StackPanel>
@@ -698,6 +802,41 @@
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource L_Mode_Admin}"/>
                                 <TextBlock Text="{DynamicResource L_Mode_Admin_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="AgentPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=AgentPill}" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Style="{StaticResource MenuCardBorder}" MinWidth="260" Margin="0,0,0,6">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource L_Agent}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" AutomationProperties.AutomationId="AgentBuiltin" Tag="builtin" Click="AgentMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="AutoCode"/>
+                                <TextBlock Text="{DynamicResource L_Agent_Builtin_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" AutomationProperties.AutomationId="AgentClaudeCode" Tag="claude-code" Click="AgentMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Claude Code"/>
+                                <TextBlock Text="{DynamicResource L_Agent_ClaudeCode_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" AutomationProperties.AutomationId="AgentCodex" Tag="codex" Click="AgentMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconCubeAlt}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Codex"/>
+                                <TextBlock Text="{DynamicResource L_Agent_Codex_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -777,6 +916,12 @@
                         <StackPanel Orientation="Horizontal">
                             <ctl:IconGlyph Geometry="{StaticResource IconKey}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
                             <TextBlock Text="{DynamicResource L_Byok}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButtonStyle}" Click="ExternalAgentsMenu_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                            <TextBlock Text="{DynamicResource L_ExternalAgents}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource MenuItemButtonStyle}" Click="ProxyMenu_Click">

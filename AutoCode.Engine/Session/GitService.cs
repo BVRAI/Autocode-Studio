@@ -39,6 +39,37 @@ public static class GitService
     public static Task<GitResult> CreateWorktreeAsync(string repoRoot, string worktreePath, string branch, CancellationToken cancellationToken = default)
         => RunGitAsync(repoRoot, $"worktree add -b {Quote(branch)} {Quote(worktreePath)}", cancellationToken);
 
+    /// <summary>Initialize a repo in an existing directory (re-init is benign). When an identity is
+    /// given it is set repo-locally, so later commits work on machines with no global git config.</summary>
+    public static async Task<GitResult> InitAsync(string dir, string? userName = null, string? userEmail = null, CancellationToken cancellationToken = default)
+    {
+        var init = await RunGitAsync(dir, "init", cancellationToken).ConfigureAwait(false);
+        if (!init.Ok)
+        {
+            return init;
+        }
+
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            var name = await RunGitAsync(dir, $"config user.name {Quote(userName)}", cancellationToken).ConfigureAwait(false);
+            if (!name.Ok)
+            {
+                return name;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(userEmail))
+        {
+            var email = await RunGitAsync(dir, $"config user.email {Quote(userEmail)}", cancellationToken).ConfigureAwait(false);
+            if (!email.Ok)
+            {
+                return email;
+            }
+        }
+
+        return init;
+    }
+
     /// <summary>Stage everything and commit. "nothing to commit" is treated as a benign no-op.</summary>
     public static async Task<GitResult> CommitAllAsync(string worktreePath, string message, CancellationToken cancellationToken = default)
     {

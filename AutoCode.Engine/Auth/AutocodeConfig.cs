@@ -53,8 +53,25 @@ public sealed class AutocodeConfig
 
     public WebToolsConfig WebTools { get; set; } = new();
 
+    /// <summary>Per external-agent auth settings, keyed by agent id ("claude-code", "codex").
+    /// Absent entry = subscription mode (the CLI's own login).</summary>
+    public Dictionary<string, ExternalAgentAuthConfig> ExternalAgents { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Agent for new sessions ("builtin" | "claude-code" | "codex"); the composer's agent
+    /// picker updates it. A --agent launch arg overrides it for that launch's startup workspaces.</summary>
+    public string? DefaultAgentId { get; set; }
+
     public ModelConfig ToModelConfig() =>
         new(DefaultProvider ?? "anthropic", DefaultModel ?? "claude-opus-4-7");
+}
+
+/// <summary>How an external CLI agent authenticates: "subscription" (default; the child env is
+/// scrubbed so the CLI uses its own login) or "api-key" (the key is injected into the child env).</summary>
+public sealed class ExternalAgentAuthConfig
+{
+    public string Mode { get; set; } = "subscription";
+
+    public string? ApiKey { get; set; }
 }
 
 public sealed class WebToolsConfig

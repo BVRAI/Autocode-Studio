@@ -17,7 +17,9 @@ public sealed record SessionSidecar(
     DateTimeOffset StartedAt,
     string? GitBranch = null,
     string? GitWorktreePath = null,
-    string? GitBaseBranch = null);
+    string? GitBaseBranch = null,
+    string? AgentId = null,
+    string? ExternalResumeId = null);
 
 public static class SessionIndex
 {

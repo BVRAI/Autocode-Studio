@@ -90,6 +90,11 @@ public sealed class MainViewModel : ObservableObject
         {
             Raise(nameof(ShowRunBadgeTopbar));
         }
+
+        if (e.PropertyName == nameof(WorkspaceSession.AgentId))
+        {
+            Raise(nameof(AgentLabel));
+        }
     }
 
     // ---- Per-session façade (forwards to Active) ----
@@ -98,6 +103,16 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<PlanItemVM> Plan => Active?.Plan ?? EmptyPlan;
     public ObservableCollection<FileNode> Files => Active?.Files ?? EmptyFiles;
     public ObservableCollection<ChangeItem> Changes => Active?.Changes ?? EmptyChanges;
+
+    public string AgentLabel => AgentDisplayName(Active?.AgentId);
+
+    /// <summary>Display name for an agent id ("builtin" | "claude-code" | "codex").</summary>
+    public static string AgentDisplayName(string? agentId) => agentId switch
+    {
+        "claude-code" => "Claude Code",
+        "codex" => "Codex",
+        _ => "AutoCode",
+    };
 
     public string ChatTitle => Active?.ChatTitle ?? "New session";
     public string ChatSubtitle => Active?.ChatSubtitle ?? "";
@@ -126,6 +141,16 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- Sidebar projects ----
     public ObservableCollection<ProjectNode> Projects { get; } = [];
+
+    // ---- Sidebar ecosystems (bare list in Phase 1; grouping in Phase 2) ----
+    public ObservableCollection<EcosystemNode> Ecosystems { get; } = [];
+
+    private bool _hasEcosystems;
+    public bool HasEcosystems
+    {
+        get => _hasEcosystems;
+        set => Set(ref _hasEcosystems, value);
+    }
 
     // ---- Layout state ----
     private bool _sidebarCollapsed;

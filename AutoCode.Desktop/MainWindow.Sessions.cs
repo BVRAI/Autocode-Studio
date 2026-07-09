@@ -52,12 +52,14 @@ public partial class MainWindow
         ResetTurnState(session);
     }
 
-    private async Task StartNewSession(string projectRoot, string agentId = "builtin")
+    private async Task StartNewSession(string projectRoot, string? agentId = null)
     {
         if (!Directory.Exists(projectRoot))
         {
             return;
         }
+
+        agentId ??= string.IsNullOrWhiteSpace(_config.DefaultAgentId) ? "builtin" : _config.DefaultAgentId;
 
         SaveModelToConfig();
         var sessionId = SessionIds.NewId();
@@ -145,7 +147,9 @@ public partial class MainWindow
             session.StartedAt,
             session.Branch,
             session.WorktreePath,
-            session.BaseBranch));
+            session.BaseBranch,
+            session.AgentId,
+            session.Backend?.ResumeId));
     }
 
     /// <summary>Commit + merge the active session's branch back into its base, then notify.</summary>
@@ -205,11 +209,18 @@ public partial class MainWindow
     /// per-workspace picker swap in an external CLI agent (Claude Code / Codex) with no shell change.</summary>
     private void WireLoop(WorkspaceSession session)
     {
-        // External CLI agents (Claude Code / Codex) run in the worktree on the user's subscription and
-        // parse into the same event stream — they only need the emit callback.
+        // External CLI agents (Claude Code / Codex) run in the worktree on the user's subscription
+        // login (or a configured API key) and parse into the same event stream — they only need the
+        // emit callback.
         if (session.AgentId == "claude-code")
         {
-            session.Backend = new ClaudeCodeBackend(evt => EmitAsync(session, evt));
+            session.Backend = new ClaudeCodeBackend(evt => EmitAsync(session, evt), () => ResolveExternalAuth("claude-code"));
+            return;
+        }
+
+        if (session.AgentId == "codex")
+        {
+            session.Backend = new CodexBackend(evt => EmitAsync(session, evt), () => ResolveExternalAuth("codex"));
             return;
         }
 
@@ -226,6 +237,19 @@ public partial class MainWindow
         session.Backend = new BuiltinAgentBackend(loop);
     }
 
+    /// <summary>Resolve the configured auth mode for an external CLI agent (default: subscription).</summary>
+    private ExternalAgentAuth ResolveExternalAuth(string agentId)
+    {
+        if (_config.ExternalAgents.TryGetValue(agentId, out var cfg)
+            && cfg.Mode == ExternalAgentAuth.ApiKeyMode
+            && !string.IsNullOrWhiteSpace(cfg.ApiKey))
+        {
+            return new ExternalAgentAuth(ExternalAgentAuth.ApiKeyMode, cfg.ApiKey);
+        }
+
+        return ExternalAgentAuth.Subscription;
+    }
+
     private void UpdateSessionMeta(WorkspaceSession session)
     {
         if (session.Context is null)
@@ -240,6 +264,7 @@ public partial class MainWindow
 
     private void RebuildSidebar(string? activeId)
     {
+        RebuildEcosystemRows();
         _vm.Projects.Clear();
         var now = DateTimeOffset.Now;
         var groups = SessionIndex.LoadAll()
@@ -261,11 +286,15 @@ public partial class MainWindow
                     Title = string.IsNullOrWhiteSpace(s.Title) ? "Session" : s.Title,
                     ProjectRoot = s.ProjectRoot,
                     SessionDir = SessionIndex.SessionDir(s.Id),
+                    Model = s.Model,
+                    StartedAt = s.StartedAt,
                     RelativeTime = Converters.RelativeTimeConverter.Format(s.StartedAt, now),
                     IsActive = s.Id == activeId,
                     GitBranch = s.GitBranch,
                     GitWorktreePath = s.GitWorktreePath,
                     GitBaseBranch = s.GitBaseBranch,
+                    AgentId = string.IsNullOrEmpty(s.AgentId) ? "builtin" : s.AgentId,
+                    ExternalResumeId = s.ExternalResumeId,
                 };
                 if (node.IsActive) { hasActive = true; }
                 var captured = node;
@@ -305,9 +334,14 @@ public partial class MainWindow
         }
 
         // Cold open: build it and rehydrate the conversation + engine context from the transcript.
-        var session = CreateSession(node.Id, node.SessionDir, node.ProjectRoot);
+        var session = CreateSession(node.Id, node.SessionDir, node.ProjectRoot, node.AgentId);
         session.ChatTitle = string.IsNullOrWhiteSpace(node.Title) ? "Session" : node.Title;
         session.Status = "ready";
+        if (session.Backend is not null && !string.IsNullOrEmpty(node.ExternalResumeId))
+        {
+            // External CLI agents continue their own thread (Claude Code session / Codex thread).
+            session.Backend.ResumeId = node.ExternalResumeId;
+        }
 
         // Reuse the session's existing git worktree if it's still on disk.
         if (!string.IsNullOrEmpty(node.GitWorktreePath) && Directory.Exists(node.GitWorktreePath) && session.Context is not null)
@@ -348,6 +382,7 @@ public partial class MainWindow
     private async void CloseWorkspace(WorkspaceSession session)
     {
         _vm.Sessions.Close(session);
+        RunShellTool.StopBackgroundProcesses(session.Id);
         if (_vm.Active is null)
         {
             // Never leave zero workspaces open.

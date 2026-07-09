@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using AutoCode.Desktop.Controls;
+using AutoCode.Desktop.ViewModels;
 using AutoCode.Engine.Agent;
 using AutoCode.Engine.Llm;
 
@@ -69,6 +70,19 @@ public partial class MainWindow
         }
     }
 
+    private void ExternalAgentsMenu_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsPopup.IsOpen = false;
+        var dialog = new ExternalAgentsDialog(_config) { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            dialog.ApplyTo(_config);
+            _configStore.Save(_config);
+            // External backends resolve auth live per submit (WireLoop passes a provider), so the
+            // change applies on every session's next turn — no rebuilding, resume ids preserved.
+        }
+    }
+
     private void ProxyMenu_Click(object sender, RoutedEventArgs e)
     {
         SettingsPopup.IsOpen = false;
@@ -110,6 +124,61 @@ public partial class MainWindow
     {
         BuildModelMenu();
         ModelPopup.IsOpen = true;
+    }
+
+    // ---- agent picker (which backend drives the active workspace) ----
+
+    private void AgentPill_Click(object sender, RoutedEventArgs e) => AgentPopup.IsOpen = true;
+
+    private void AgentMenu_Click(object sender, RoutedEventArgs e)
+    {
+        AgentPopup.IsOpen = false;
+        if (sender is not FrameworkElement fe || fe.Tag is not string agentId)
+        {
+            return;
+        }
+
+        _config.DefaultAgentId = agentId;
+        _configStore.Save(_config);
+
+        var session = _vm.Active;
+        if (session is null || session.AgentId == agentId)
+        {
+            return;
+        }
+
+        if (session.IsWorking)
+        {
+            session.Conversation.Add(new NoticeBlock
+            {
+                Title = Loc.T("AgentSwitchBusy_Title"),
+                Detail = Loc.T("AgentSwitchBusy_Detail"),
+            });
+            ScrollChatToEnd();
+            return;
+        }
+
+        var hadConversation = session.Conversation.Count > 0;
+        session.AgentId = agentId;
+        WireLoop(session);
+        RefreshUsage(session);
+        if (hadConversation)
+        {
+            // External CLIs keep their own thread state; a swapped-in backend starts fresh.
+            session.Conversation.Add(new NoticeBlock
+            {
+                Title = Loc.F("AgentSwitched_Title", MainViewModel.AgentDisplayName(agentId)),
+                Detail = Loc.T("AgentSwitched_Detail"),
+            });
+            ScrollChatToEnd();
+        }
+
+        // Persist only if this session already has a sidecar — never materialize an empty session.
+        if (System.IO.File.Exists(System.IO.Path.Combine(session.SessionDir, "session.json")))
+        {
+            WriteSidecar(session);
+            RebuildSidebar(session.Id);
+        }
     }
 
     private void ProviderMenu_Click(object sender, RoutedEventArgs e)

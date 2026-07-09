@@ -96,6 +96,31 @@ public sealed class GitServiceTests
         Assert.AreEqual(0, none.Count);
     }
 
+    [TestMethod]
+    public async Task Init_WithLocalIdentity_CommitSucceeds()
+    {
+        using var temp = new TempDir();
+        var repo = temp.Root;
+
+        // Init sets a repo-local identity so commits work even with no global git config
+        // (the ecosystem manifest repo relies on this).
+        var init = await GitService.InitAsync(repo, "AutoCode Studio", "autocode@local");
+        Assert.IsTrue(init.Ok, init.Message);
+
+        var name = await ToolArgs.RunProcessAsync($"git -C \"{repo}\" config user.name", repo, 30_000, default);
+        Assert.AreEqual("AutoCode Studio", name.Stdout.Trim());
+        var email = await ToolArgs.RunProcessAsync($"git -C \"{repo}\" config user.email", repo, 30_000, default);
+        Assert.AreEqual("autocode@local", email.Stdout.Trim());
+
+        File.WriteAllText(Path.Combine(repo, "manifest.json"), "{}");
+        var commit = await GitService.CommitAllAsync(repo, "Initialize ecosystem manifest");
+        Assert.IsTrue(commit.Ok, commit.Message);
+
+        // Re-init on an existing repo is a benign no-op.
+        var reinit = await GitService.InitAsync(repo);
+        Assert.IsTrue(reinit.Ok, reinit.Message);
+    }
+
     private static async Task Git(string dir, string args)
     {
         var r = await ToolArgs.RunProcessAsync($"git -C \"{dir}\" {args}", dir, 30_000, default);

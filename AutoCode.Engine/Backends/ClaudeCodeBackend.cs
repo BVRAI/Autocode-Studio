@@ -10,15 +10,17 @@ namespace AutoCode.Engine.Backends;
 /// its <c>--output-format stream-json</c> NDJSON into the shared <see cref="AgentEvent"/> stream — so an
 /// external agent renders in the UI exactly like the built-in one.
 ///
-/// Auth is the user's **subscription** (`claude login`), not an API key: the child process is spawned
-/// with <c>ANTHROPIC_API_KEY</c>/<c>ANTHROPIC_AUTH_TOKEN</c> removed so the CLI falls back to its OAuth
-/// session instead of any inherited (or metered) key. Multi-turn continuity uses Claude Code's own
+/// Auth defaults to the user's **subscription** (`claude login`): the child process is spawned with
+/// <c>ANTHROPIC_API_KEY</c>/<c>ANTHROPIC_AUTH_TOKEN</c> removed so the CLI falls back to its OAuth
+/// session instead of any inherited (or metered) key. Api-key mode (per-agent, via
+/// <see cref="ExternalAgentAuth"/>) injects a configured key instead. Multi-turn continuity uses Claude Code's own
 /// session via <c>--resume &lt;session_id&gt;</c>. The CLI runs with <c>--dangerously-skip-permissions</c>
 /// because each workspace is isolated in its own git worktree.
 /// </summary>
 public sealed class ClaudeCodeBackend : IAgentBackend
 {
     private readonly Func<AgentEvent, Task> _emit;
+    private readonly Func<ExternalAgentAuth>? _authProvider;
     private readonly Dictionary<string, string> _toolNames = new(StringComparer.Ordinal);
     private Process? _process;
     private string? _claudeSessionId;
@@ -26,7 +28,13 @@ public sealed class ClaudeCodeBackend : IAgentBackend
     private int _cumOut;
     private volatile bool _cancelled;
 
-    public ClaudeCodeBackend(Func<AgentEvent, Task> emit) => _emit = emit;
+    /// <param name="authProvider">Resolved live per submit (like the router's AuthResolver) so auth
+    /// settings changes apply without rebuilding the backend — rebuilding would drop the resume id.</param>
+    public ClaudeCodeBackend(Func<AgentEvent, Task> emit, Func<ExternalAgentAuth>? authProvider = null)
+    {
+        _emit = emit;
+        _authProvider = authProvider;
+    }
 
     public string Id => "claude-code";
 
@@ -49,6 +57,13 @@ public sealed class ClaudeCodeBackend : IAgentBackend
     {
         _claudeSessionId = null;
         return 0;
+    }
+
+    /// <summary>Claude Code's own session id (persisted in the sidecar; restored on reopen).</summary>
+    public string? ResumeId
+    {
+        get => _claudeSessionId;
+        set => _claudeSessionId = value;
     }
 
     public async Task SubmitAsync(string input, SessionContext context, CancellationToken cancellationToken)
@@ -263,9 +278,18 @@ public sealed class ClaudeCodeBackend : IAgentBackend
             psi.ArgumentList.Add(_claudeSessionId);
         }
 
-        // Force the user's subscription (OAuth) session rather than any inherited / metered API key.
-        psi.Environment.Remove("ANTHROPIC_API_KEY");
-        psi.Environment.Remove("ANTHROPIC_AUTH_TOKEN");
+        var auth = _authProvider?.Invoke() ?? ExternalAgentAuth.Subscription;
+        if (auth.UsesApiKey)
+        {
+            psi.Environment["ANTHROPIC_API_KEY"] = auth.ApiKey!;
+            psi.Environment.Remove("ANTHROPIC_AUTH_TOKEN");
+        }
+        else
+        {
+            // Force the user's subscription (OAuth) session rather than any inherited / metered API key.
+            psi.Environment.Remove("ANTHROPIC_API_KEY");
+            psi.Environment.Remove("ANTHROPIC_AUTH_TOKEN");
+        }
 
         return psi;
     }
