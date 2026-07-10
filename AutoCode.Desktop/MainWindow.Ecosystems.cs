@@ -178,6 +178,12 @@ public partial class MainWindow
             return;
         }
 
+        // Idempotent: creates the repo + template files if missing. Unconditional because a
+        // member report (AppendReportAsync) may have created the bare DIRECTORY first — a
+        // Directory.Exists check would then skip manifest.json/checklist/git entirely
+        // (found in live verification: the coordinator hit FileNotFound on manifest.json).
+        await EcosystemManifestService.EnsureRepoAsync(eco);
+
         var sc = SessionIndex.LoadAll().FirstOrDefault(
             s => s.Kind == WorkspaceSession.EcosystemKind && s.EcosystemId == eco.Id);
         if (sc is not null)
@@ -193,11 +199,6 @@ public partial class MainWindow
             RefreshUsage(reopened);
             RefreshFiles(reopened);
             return;
-        }
-
-        if (!Directory.Exists(eco.ManifestRoot))
-        {
-            await EcosystemManifestService.EnsureRepoAsync(eco);
         }
 
         var agentId = string.IsNullOrWhiteSpace(_config.DefaultAgentId) ? "builtin" : _config.DefaultAgentId;
