@@ -16,9 +16,19 @@ namespace AutoCode.Desktop.ViewModels;
 public sealed class WorkspaceSession : ObservableObject
 {
     // ---- identity / engine ----
+    public const string ProjectKind = "project";
+    public const string EcosystemKind = "ecosystem";
+
     public string Id { get; init; } = "";
     public string SessionDir { get; init; } = "";
     public DateTimeOffset StartedAt { get; init; } = DateTimeOffset.Now;
+
+    /// <summary>Session role: <see cref="ProjectKind"/> (a normal project session) or
+    /// <see cref="EcosystemKind"/> (the ecosystem chat, rooted at the manifest repo).</summary>
+    public string Kind { get; set; } = ProjectKind;
+
+    /// <summary>For an ecosystem chat (<see cref="EcosystemKind"/>), the id of the ecosystem it hosts.</summary>
+    public string? EcosystemId { get; set; }
 
     /// <summary>Mutable session config (model/mode applied per turn). Set in BuildLoop.</summary>
     public SessionContext? Context { get; set; }
@@ -87,6 +97,10 @@ public sealed class WorkspaceSession : ObservableObject
     public Queue<(WorkedStep Step, TimelineItemVM Item)> RunningTools { get; } = new();
     public HashSet<string> ModifiedFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
     public TaskCompletionSource<ApprovalDecision>? ApprovalCompletion { get; set; }
+
+    /// <summary>Routed (@mention) prompts waiting for this session to finish its current turn; drained
+    /// one at a time when a turn completes. Only populated for members that were busy when dispatched.</summary>
+    public Queue<string> PendingPrompts { get; } = new();
 
     // ---- status ----
     /// <summary>True for the one session currently shown in the main view (set by SessionManager).</summary>

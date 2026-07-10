@@ -149,7 +149,9 @@ public partial class MainWindow
             session.WorktreePath,
             session.BaseBranch,
             session.AgentId,
-            session.Backend?.ResumeId));
+            session.Backend?.ResumeId,
+            session.Kind,
+            session.EcosystemId));
     }
 
     /// <summary>Commit + merge the active session's branch back into its base, then notify.</summary>
@@ -178,7 +180,8 @@ public partial class MainWindow
     }
 
     /// <summary>Build a fresh WorkspaceSession (context + wired agent backend) for the given project root.</summary>
-    private WorkspaceSession CreateSession(string sessionId, string sessionDir, string projectRoot, string agentId = "builtin")
+    private WorkspaceSession CreateSession(string sessionId, string sessionDir, string projectRoot, string agentId = "builtin",
+        string kind = WorkspaceSession.ProjectKind, string? ecosystemId = null)
     {
         Directory.CreateDirectory(sessionDir);
         var dataDir = Engine.Auth.Paths.DataDirectory();
@@ -189,6 +192,8 @@ public partial class MainWindow
             ProjectRoot = projectRoot,
             StartedAt = DateTimeOffset.Now,
             AgentId = agentId,
+            Kind = kind,
+            EcosystemId = ecosystemId,
         };
         session.Context = new SessionContext(
             sessionId,
@@ -264,47 +269,53 @@ public partial class MainWindow
 
     private void RebuildSidebar(string? activeId)
     {
-        RebuildEcosystemRows();
-        _vm.Projects.Clear();
-        var now = DateTimeOffset.Now;
-        var groups = SessionIndex.LoadAll()
+        // Build every project row (grouped by root, newest first), then hand the flat list to the
+        // ecosystems partial which decides flat-vs-grouped and distributes into the right collections.
+        var projects = SessionIndex.LoadAll()
+            .Where(s => s.Kind != WorkspaceSession.EcosystemKind)   // ecosystem chats aren't projects
             .GroupBy(s => s.ProjectRoot, StringComparer.OrdinalIgnoreCase)
             .Select(g => new { Root = g.Key, Items = g.OrderByDescending(s => s.StartedAt).ToList(), Latest = g.Max(s => s.StartedAt) })
             .OrderByDescending(g => g.Latest)
+            .Select(g => BuildProjectNode(g.Root, g.Items, activeId))
             .ToList();
 
-        foreach (var g in groups)
-        {
-            var project = new ProjectNode { Name = LeafName(g.Root), Path = g.Root };
-            project.ToggleCommand = new RelayCommand(_ => project.IsExpanded = !project.IsExpanded);
-            var hasActive = false;
-            foreach (var s in g.Items)
-            {
-                var node = new SessionNode
-                {
-                    Id = s.Id,
-                    Title = string.IsNullOrWhiteSpace(s.Title) ? "Session" : s.Title,
-                    ProjectRoot = s.ProjectRoot,
-                    SessionDir = SessionIndex.SessionDir(s.Id),
-                    Model = s.Model,
-                    StartedAt = s.StartedAt,
-                    RelativeTime = Converters.RelativeTimeConverter.Format(s.StartedAt, now),
-                    IsActive = s.Id == activeId,
-                    GitBranch = s.GitBranch,
-                    GitWorktreePath = s.GitWorktreePath,
-                    GitBaseBranch = s.GitBaseBranch,
-                    AgentId = string.IsNullOrEmpty(s.AgentId) ? "builtin" : s.AgentId,
-                    ExternalResumeId = s.ExternalResumeId,
-                };
-                if (node.IsActive) { hasActive = true; }
-                var captured = node;
-                node.OpenCommand = new RelayCommand(_ => OpenSession(captured));
-                project.Sessions.Add(node);
-            }
+        ApplySidebarGrouping(projects);
+    }
 
-            project.IsExpanded = hasActive;
-            _vm.Projects.Add(project);
+    /// <summary>Build one project row (name, root, toggle, session children), auto-expanded when it
+    /// holds the active session. Shared by the flat PROJECTS list and the grouped ecosystem view.</summary>
+    private ProjectNode BuildProjectNode(string root, List<SessionSidecar> items, string? activeId)
+    {
+        var now = DateTimeOffset.Now;
+        var project = new ProjectNode { Name = LeafName(root), Path = root };
+        project.ToggleCommand = new RelayCommand(_ => project.IsExpanded = !project.IsExpanded);
+        var hasActive = false;
+        foreach (var s in items)
+        {
+            var node = new SessionNode
+            {
+                Id = s.Id,
+                Title = string.IsNullOrWhiteSpace(s.Title) ? "Session" : s.Title,
+                ProjectRoot = s.ProjectRoot,
+                SessionDir = SessionIndex.SessionDir(s.Id),
+                Model = s.Model,
+                StartedAt = s.StartedAt,
+                RelativeTime = Converters.RelativeTimeConverter.Format(s.StartedAt, now),
+                IsActive = s.Id == activeId,
+                GitBranch = s.GitBranch,
+                GitWorktreePath = s.GitWorktreePath,
+                GitBaseBranch = s.GitBaseBranch,
+                AgentId = string.IsNullOrEmpty(s.AgentId) ? "builtin" : s.AgentId,
+                ExternalResumeId = s.ExternalResumeId,
+            };
+            if (node.IsActive) { hasActive = true; }
+            var captured = node;
+            node.OpenCommand = new RelayCommand(_ => OpenSession(captured));
+            project.Sessions.Add(node);
         }
+
+        project.IsExpanded = hasActive;
+        return project;
     }
 
     private void UpdateActiveSessionTitle(WorkspaceSession session, string prompt)
@@ -317,7 +328,7 @@ public partial class MainWindow
         var title = prompt.Length > 48 ? prompt[..48] + "…" : prompt;
         session.ChatTitle = title;
         WriteSidecar(session);
-        RebuildSidebar(session.Id);
+        RebuildSidebar(_vm.Active?.Id);   // keep the active highlight on the current tab (session may be a routed member)
     }
 
     private void OpenSession(SessionNode node)
@@ -353,14 +364,7 @@ public partial class MainWindow
             UpdateSessionMeta(session);
         }
 
-        var history = SessionIndex.LoadTranscript(node.SessionDir);
-        session.Backend?.LoadHistory(history);
-        foreach (var (role, text) in history)
-        {
-            session.Conversation.Add(string.Equals(role, "user", StringComparison.OrdinalIgnoreCase)
-                ? new UserBubbleBlock { Text = text }
-                : new AssistantBlock { Text = text });
-        }
+        RehydrateTranscript(session);
 
         _vm.Sessions.Activate(session);
         RebuildSidebar(node.Id);
@@ -368,6 +372,19 @@ public partial class MainWindow
         RefreshFiles(session);
         _ = RefreshChangesAsync(session);
         ScrollChatToEnd();
+    }
+
+    /// <summary>Replay a session's saved transcript into its backend history + conversation bubbles.</summary>
+    private void RehydrateTranscript(WorkspaceSession session)
+    {
+        var history = SessionIndex.LoadTranscript(session.SessionDir);
+        session.Backend?.LoadHistory(history);
+        foreach (var (role, text) in history)
+        {
+            session.Conversation.Add(string.Equals(role, "user", StringComparison.OrdinalIgnoreCase)
+                ? new UserBubbleBlock { Text = text }
+                : new AssistantBlock { Text = text });
+        }
     }
 
     // Live workspace switcher (the WORKSPACES list, bound to SessionManager.Sessions).

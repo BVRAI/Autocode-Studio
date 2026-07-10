@@ -59,6 +59,9 @@ public partial class MainWindow
                     SetPlan(session, plan.Items);
                     break;
             }
+
+            // Mirror member activity into its ecosystem chat's feed (no-op unless that chat is open).
+            TeeToEcosystemFeed(session, evt);
         });
     }
 

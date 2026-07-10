@@ -45,6 +45,9 @@ public sealed class AutocodeConfig
 
     public bool KeepAwakeEnabled { get; set; }
 
+    /// <summary>When true, the sidebar groups projects under their ecosystem (Phase 2). Off = flat list.</summary>
+    public bool GroupByEcosystem { get; set; }
+
     /// <summary>Voice-to-text backend selection as "prefix:model" (e.g. "openai:whisper-1"). Null = auto-select best available.</summary>
     public string? TranscriptionProvider { get; set; }
 

@@ -67,6 +67,8 @@
   "ExternalAgents": "External agents…",
   "Ecosystems": "ECOSYSTEMS",
   "EcosystemMembers": "{0} projects",
+  "Tooltip_GroupByEcosystem": "Group projects by ecosystem",
+  "Tooltip_OpenEcosystemChat": "Open ecosystem chat",
   "Menu_NewEcosystem": "New ecosystem…",
   "Menu_AddToEcosystem": "Add to {0}",
   "Menu_MoveToEcosystem": "Move to {0}",

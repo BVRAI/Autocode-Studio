@@ -133,3 +133,13 @@ public sealed class NoticeBlock : ConversationBlock
 public sealed class WorkingBlock : ConversationBlock
 {
 }
+
+/// <summary>An attributed entry in an ecosystem chat's feed: activity from a member session, teed in.
+/// <see cref="Kind"/> is start | tool | message | finish | error (drives the template accent).</summary>
+public sealed class MemberActivityBlock : ConversationBlock
+{
+    public string Member { get; init; } = "";
+    public string Summary { get; init; } = "";
+    public string? Detail { get; init; }
+    public string Kind { get; init; } = "activity";
+}

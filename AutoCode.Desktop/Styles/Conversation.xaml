@@ -190,6 +190,27 @@
         </Border>
     </DataTemplate>
 
+    <!-- ===================== ecosystem member activity (feed) ===================== -->
+    <!-- Attributed activity teed from a member session into the ecosystem chat. Stage-B minimal;
+         design pass #2 restyles (per-Kind accents, chip treatment). -->
+    <DataTemplate DataType="{x:Type vm:MemberActivityBlock}">
+        <Border Background="{DynamicResource Surface3Brush}" BorderBrush="{DynamicResource BorderBrush2}"
+                BorderThickness="2,0,0,0" CornerRadius="4" Padding="10,6" Margin="0,0,64,0">
+            <StackPanel Orientation="Horizontal">
+                <Border Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Member}" FontFamily="{DynamicResource UiFontFamily}" FontSize="11"
+                               FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                </Border>
+                <TextBlock Text="{Binding Summary}" FontFamily="{DynamicResource UiFontFamily}" FontSize="12.5"
+                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Detail}" FontFamily="{DynamicResource UiFontFamily}" FontSize="12"
+                           Foreground="{DynamicResource Text3Brush}" Margin="7,0,0,0" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding Detail, Converter={StaticResource NullToVis}}"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
     <!-- ===================== working indicator ===================== -->
     <DataTemplate DataType="{x:Type vm:WorkingBlock}">
         <StackPanel Orientation="Horizontal">

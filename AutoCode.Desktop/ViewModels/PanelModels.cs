@@ -3,13 +3,27 @@ using System.Windows.Input;
 
 namespace AutoCode.Desktop.ViewModels;
 
-/// <summary>An ecosystem row in the sidebar (bare list in Phase 1; grouping arrives in Phase 2).
-/// Rows are rebuilt wholesale on registry changes, so init-only properties suffice.</summary>
-public sealed class EcosystemNode
+/// <summary>An ecosystem row in the sidebar. Serves two renderings, both rebuilt wholesale on
+/// registry changes: the bare flat list (Phase 1) uses only Id/Name/MemberCountText; the grouped
+/// view (Phase 2) additionally nests its member projects and can expand/collapse.</summary>
+public sealed class EcosystemNode : ObservableObject
 {
+    private bool _isExpanded = true;
+
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
     public string MemberCountText { get; init; } = "";
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => Set(ref _isExpanded, value);
+    }
+
+    /// <summary>Member projects nested under this ecosystem in the grouped view (empty in the bare list).</summary>
+    public ObservableCollection<ProjectNode> Projects { get; } = [];
+
+    public ICommand? ToggleCommand { get; set; }
 }
 
 /// <summary>A project row in the sidebar that groups its sessions.</summary>

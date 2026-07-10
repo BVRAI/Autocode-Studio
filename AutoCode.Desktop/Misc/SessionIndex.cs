@@ -19,7 +19,9 @@ public sealed record SessionSidecar(
     string? GitWorktreePath = null,
     string? GitBaseBranch = null,
     string? AgentId = null,
-    string? ExternalResumeId = null);
+    string? ExternalResumeId = null,
+    string? Kind = null,
+    string? EcosystemId = null);
 
 public static class SessionIndex
 {

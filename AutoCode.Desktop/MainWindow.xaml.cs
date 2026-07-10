@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         _vm.ReviseApprovalCommand = new RelayCommand(_ => ReviseApproval());
         _vm.ActivateSessionCommand = new RelayCommand(p => { if (p is WorkspaceSession s) ActivateWorkspace(s); });
         _vm.CloseSessionCommand = new RelayCommand(p => { if (p is WorkspaceSession s) CloseWorkspace(s); });
+        _vm.OpenEcosystemChatCommand = new RelayCommand(p => { if (p is EcosystemNode n) OpenEcosystemChatFromNode(n); });
         InlineParser.FileRefRequested += OnFileRefRequested;
         _firebase.StateChanged += () => Dispatcher.Invoke(RefreshAccountUi);
     }
@@ -58,6 +59,7 @@ public partial class MainWindow : Window
         _vm.IsLargeFont = _config.TextScale > 1.0;
         ApplyKeepAwake(_config.KeepAwakeEnabled);
         _vm.IsKeepAwake = _config.KeepAwakeEnabled;
+        _vm.GroupByEcosystem = _config.GroupByEcosystem;
 
         InitEcosystems();
 
@@ -151,13 +153,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        var prompt = PromptBox.Text.Trim();
-        if (prompt.Length == 0)
+        var input = PromptBox.Text.Trim();
+        if (input.Length == 0)
         {
             return;
         }
 
         PromptBox.Clear();
+
+        // In an ecosystem chat, "@member ..." routes to member sessions instead of the ecosystem agent.
+        if (TryRouteMentions(session, input))
+        {
+            return;
+        }
+
+        await SubmitPromptAsync(session, input);
+    }
+
+    /// <summary>Run one turn for a specific session: apply the composer model/mode, echo the user bubble,
+    /// submit to its backend, then finalize (usage, files, resume-sidecar, worktree commit, changes). Shared
+    /// by the active chat and by @mention-routed member sessions; drains this session's queued prompts after.</summary>
+    private async Task SubmitPromptAsync(WorkspaceSession session, string prompt)
+    {
+        if (session.Backend is null || session.Context is null)
+        {
+            return;
+        }
+
         SaveModelToConfig();
         session.Context = session.Context.WithMode(_vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model));
         UpdateSessionMeta(session);
@@ -167,9 +189,10 @@ public partial class MainWindow : Window
         session.RunCts = new CancellationTokenSource();
         ResetTurnState(session);
         session.Conversation.Add(new UserBubbleBlock { Text = prompt });
-        ScrollChatToEnd();
+        if (IsActiveSession(session)) { ScrollChatToEnd(); }
         session.IsWorking = true;
         session.Status = "working";
+        NoteMemberTurnBoundary(session, starting: true);
 
         try
         {
@@ -187,6 +210,7 @@ public partial class MainWindow : Window
         finally
         {
             session.IsWorking = false;
+            NoteMemberTurnBoundary(session, starting: false);
             FinalizeWorked(session);
             if (session.Status == "working")
             {
@@ -212,6 +236,12 @@ public partial class MainWindow : Window
 
             // Update the review surface (changed files) for this session.
             await RefreshChangesAsync(session);
+        }
+
+        // Drain the next queued (@mention-routed) prompt for this session, if any.
+        if (session.PendingPrompts.Count > 0)
+        {
+            await SubmitPromptAsync(session, session.PendingPrompts.Dequeue());
         }
     }
 

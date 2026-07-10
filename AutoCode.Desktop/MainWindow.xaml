@@ -24,6 +24,122 @@
         <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
+    <Window.Resources>
+        <!-- Shared sidebar row templates. Implicit (DataType, no key) so the flat PROJECTS list AND
+             the projects nested under an ecosystem group render identically with zero duplication. -->
+        <DataTemplate DataType="{x:Type vm:SessionNode}">
+            <Button Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}" Command="{Binding OpenCommand}" PreviewMouseLeftButtonDown="SavedSessionTitle_PreviewMouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                   FontSize="13" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitle, Converter={StaticResource BoolToVis}}" Focusable="True" Panel.ZIndex="1"
+                                 FontSize="13" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
+                                 VerticalAlignment="Center" MinWidth="24" CaretBrush="{DynamicResource TextBrush}"
+                                 KeyDown="SavedTitleEditor_KeyDown" LostKeyboardFocus="SavedTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
+                    </Grid>
+                    <TextBlock Grid.Column="1" Text="{Binding RelativeTime}" VerticalAlignment="Center" Margin="8,0,0,0"
+                               FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"
+                               Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
+                    <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center"
+                             Fill="{DynamicResource AccentBrush}"
+                             Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ProjectNode}">
+            <StackPanel>
+                <Button Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="ProjectRow_RightClick">
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph x:Name="PChevIcon" Geometry="{StaticResource IconChevron}" Width="13" Height="13" Margin="0,0,7,0"
+                                       Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
+                                       RenderTransformOrigin="0.5,0.5"/>
+                        <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="15" Height="15" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextBrush}"/>
+                    </StackPanel>
+                </Button>
+                <ItemsControl ItemsSource="{Binding Sessions}"
+                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"/>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter TargetName="PChevIcon" Property="RenderTransform">
+                        <Setter.Value>
+                            <RotateTransform Angle="90"/>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Grouped ecosystem header (keyed: EcosystemNode also has the bare-list rendering). Mirrors
+             the project row — chevron + cube glyph + name + member count; expands to its member projects. -->
+        <DataTemplate x:Key="EcosystemGroupTemplate" DataType="{x:Type vm:EcosystemNode}">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ctl:IconGlyph x:Name="EChevIcon" Geometry="{StaticResource IconChevron}" Width="13" Height="13" Margin="0,0,7,0"
+                                           Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5"/>
+                            <ctl:IconGlyph Grid.Column="1" Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,8,0"
+                                           Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextBrush}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                       FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                        </Grid>
+                    </Button>
+                    <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" Margin="2,0,4,0"
+                            Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            ToolTip="{DynamicResource L_Tooltip_OpenEcosystemChat}">
+                        <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="14" Height="14"/>
+                    </Button>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Projects}"
+                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"/>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter TargetName="EChevIcon" Property="RenderTransform">
+                        <Setter.Value>
+                            <RotateTransform Angle="90"/>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
+
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="38"/>
@@ -299,97 +415,60 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- Bare ecosystems list (Phase 1); grouping + styling arrive with Phase 2's design pass. -->
-                            <StackPanel Visibility="{Binding HasEcosystems, Converter={StaticResource BoolToVis}}">
+                            <!-- Group-by-ecosystem toggle (Phase 2 Stage A; placement/appearance are the design pass's job). -->
+                            <Grid Margin="11,12,4,0" Visibility="{Binding HasEcosystems, Converter={StaticResource BoolToVis}}">
+                                <Button HorizontalAlignment="Right" Style="{StaticResource IconButtonStyle}"
+                                        Tag="{Binding GroupByEcosystem}" Click="GroupByEcosystemToggle_Click"
+                                        ToolTip="{DynamicResource L_Tooltip_GroupByEcosystem}">
+                                    <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="16" Height="16"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- Bare ECOSYSTEMS list: shown when ecosystems exist but grouping is off. -->
+                            <StackPanel Visibility="{Binding ShowBareEcosystems, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
                                 <ItemsControl ItemsSource="{Binding Ecosystems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:EcosystemNode}">
-                                            <Button Style="{StaticResource SidebarSessionStyle}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
-                                                               FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                                                </Grid>
-                                            </Button>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                                   FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                                    </Grid>
+                                                </Button>
+                                                <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" Margin="2,0,4,0"
+                                                        Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="{DynamicResource L_Tooltip_OpenEcosystemChat}">
+                                                    <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="14" Height="14"/>
+                                                </Button>
+                                            </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
 
-                            <TextBlock Text="{DynamicResource L_Projects}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
-                            <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:ProjectNode}">
-                                        <StackPanel>
-                                            <Button Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="ProjectRow_RightClick">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <ctl:IconGlyph x:Name="PChevIcon" Geometry="{StaticResource IconChevron}" Width="13" Height="13" Margin="0,0,7,0"
-                                                                   Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"
-                                                                   RenderTransformOrigin="0.5,0.5"/>
-                                                    <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="15" Height="15" Margin="0,0,8,0"
-                                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                                               FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextBrush}"/>
-                                                </StackPanel>
-                                            </Button>
-                                            <ItemsControl ItemsSource="{Binding Sessions}"
-                                                          Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:SessionNode}">
-                                                        <Button Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}" Command="{Binding OpenCommand}" PreviewMouseLeftButtonDown="SavedSessionTitle_PreviewMouseLeftButtonDown">
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                </Grid.ColumnDefinitions>
-                                                                <Grid Grid.Column="0">
-                                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
-                                                                               FontSize="13" VerticalAlignment="Center">
-                                                                        <TextBlock.Style>
-                                                                            <Style TargetType="TextBlock">
-                                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
-                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </TextBlock.Style>
-                                                                    </TextBlock>
-                                                                    <TextBox Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitle, Converter={StaticResource BoolToVis}}" Focusable="True" Panel.ZIndex="1"
-                                                                             FontSize="13" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
-                                                                             VerticalAlignment="Center" MinWidth="24" CaretBrush="{DynamicResource TextBrush}"
-                                                                             KeyDown="SavedTitleEditor_KeyDown" LostKeyboardFocus="SavedTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
-                                                                </Grid>
-                                                                <TextBlock Grid.Column="1" Text="{Binding RelativeTime}" VerticalAlignment="Center" Margin="8,0,0,0"
-                                                                           FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"
-                                                                           Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"/>
-                                                                <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center"
-                                                                         Fill="{DynamicResource AccentBrush}"
-                                                                         Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
-                                                            </Grid>
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                        <DataTemplate.Triggers>
-                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                <Setter TargetName="PChevIcon" Property="RenderTransform">
-                                                    <Setter.Value>
-                                                        <RotateTransform Angle="90"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                        </DataTemplate.Triggers>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <!-- Grouped ECOSYSTEMS: each ecosystem is an expandable header with its member projects nested. -->
+                            <StackPanel Visibility="{Binding ShowGrouped, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                                <ItemsControl ItemsSource="{Binding EcosystemGroups}" ItemTemplate="{StaticResource EcosystemGroupTemplate}"/>
+                            </StackPanel>
+
+                            <!-- PROJECTS: all projects (flat mode) or only the ungrouped ones (grouped mode). Uses the implicit ProjectNode template. -->
+                            <StackPanel Visibility="{Binding HasProjects, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{DynamicResource L_Projects}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
+                                <ItemsControl x:Name="ProjectsList" ItemsSource="{Binding Projects}"/>
+                            </StackPanel>
 
                         </StackPanel>
                     </ScrollViewer>

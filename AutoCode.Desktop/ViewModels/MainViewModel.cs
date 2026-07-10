@@ -46,6 +46,7 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand? ReviseApprovalCommand { get; set; }
     public RelayCommand? ActivateSessionCommand { get; set; }
     public RelayCommand? CloseSessionCommand { get; set; }
+    public RelayCommand? OpenEcosystemChatCommand { get; set; }
 
     // Transient text for the approval "revise" box (bound two-way from the Run panel).
     private string _revisionText = "";
@@ -139,17 +140,50 @@ public sealed class MainViewModel : ObservableObject
     public GridLength UsageFill => Active?.UsageFill ?? new GridLength(0.0001, GridUnitType.Star);
     public GridLength UsageRest => Active?.UsageRest ?? new GridLength(1, GridUnitType.Star);
 
-    // ---- Sidebar projects ----
+    // ---- Sidebar projects (flat list; in grouped mode holds only the ungrouped ones) ----
     public ObservableCollection<ProjectNode> Projects { get; } = [];
 
-    // ---- Sidebar ecosystems (bare list in Phase 1; grouping in Phase 2) ----
+    // ---- Sidebar ecosystems: bare flat list (Phase 1) + grouped-with-nested-projects (Phase 2) ----
     public ObservableCollection<EcosystemNode> Ecosystems { get; } = [];
+    public ObservableCollection<EcosystemNode> EcosystemGroups { get; } = [];
 
     private bool _hasEcosystems;
     public bool HasEcosystems
     {
         get => _hasEcosystems;
         set => Set(ref _hasEcosystems, value);
+    }
+
+    /// <summary>User preference: group projects under ecosystems. Persisted; drives the sidebar's mode.</summary>
+    private bool _groupByEcosystem;
+    public bool GroupByEcosystem
+    {
+        get => _groupByEcosystem;
+        set => Set(ref _groupByEcosystem, value);
+    }
+
+    /// <summary>Effective grouped mode = preference on AND at least one ecosystem exists. Set by RebuildSidebar.</summary>
+    private bool _showGrouped;
+    public bool ShowGrouped
+    {
+        get => _showGrouped;
+        set => Set(ref _showGrouped, value);
+    }
+
+    /// <summary>Show the bare ECOSYSTEMS list (ecosystems exist but grouped mode is off). Set by RebuildSidebar.</summary>
+    private bool _showBareEcosystems;
+    public bool ShowBareEcosystems
+    {
+        get => _showBareEcosystems;
+        set => Set(ref _showBareEcosystems, value);
+    }
+
+    /// <summary>Whether the flat PROJECTS section has any rows (hides its header when empty). Set by RebuildSidebar.</summary>
+    private bool _hasProjects;
+    public bool HasProjects
+    {
+        get => _hasProjects;
+        set => Set(ref _hasProjects, value);
     }
 
     // ---- Layout state ----
