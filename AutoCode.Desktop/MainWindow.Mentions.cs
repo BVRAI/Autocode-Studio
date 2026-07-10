@@ -93,7 +93,8 @@ public partial class MainWindow
             ecosystemChat.Conversation.Add(new MemberActivityBlock
             {
                 Member = MemberDisplayName(member),
-                Summary = $"busy — queued ({member.PendingPrompts.Count})",
+                Summary = Loc.F("Feed_Queued", member.PendingPrompts.Count),
+                Detail = Loc.T("Feed_QueuedHint"),
                 Kind = "queued",
             });
             if (IsActiveSession(ecosystemChat)) { ScrollChatToEnd(); }

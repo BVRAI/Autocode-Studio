@@ -134,12 +134,86 @@ public sealed class WorkingBlock : ConversationBlock
 {
 }
 
-/// <summary>An attributed entry in an ecosystem chat's feed: activity from a member session, teed in.
-/// <see cref="Kind"/> is start | tool | message | finish | error (drives the template accent).</summary>
+/// <summary>A standalone attributed entry in an ecosystem chat's feed. <see cref="Kind"/> is
+/// report (milestone — accent card) | error (amber card) | queued (ghost row). Routine turn
+/// activity folds into <see cref="MemberTurnCardBlock"/> instead (design spec §2).</summary>
 public sealed class MemberActivityBlock : ConversationBlock
 {
     public string Member { get; init; } = "";
     public string Summary { get; init; } = "";
     public string? Detail { get; init; }
     public string Kind { get; init; } = "activity";
+    public string TimeText { get; init; } = "";
+}
+
+/// <summary>One member turn folded into a single feed card: header = member chip + live status
+/// ("working · Ns" → "finished · Ns · N steps"); body = tool/message steps, newest 3 while running
+/// with an "N earlier steps" expander; auto-collapses to the header when the turn finishes.</summary>
+public sealed class MemberTurnCardBlock : ConversationBlock
+{
+    private bool _isRunning = true;
+    private string _statusText = "";
+    private bool _isExpanded;
+    private int _earlierCount;
+
+    public string Member { get; init; } = "";
+    public DateTimeOffset StartedAt { get; init; } = DateTimeOffset.Now;
+
+    public bool IsRunning
+    {
+        get => _isRunning;
+        set => Set(ref _isRunning, value);
+    }
+
+    public string StatusText
+    {
+        get => _statusText;
+        set => Set(ref _statusText, value);
+    }
+
+    /// <summary>Expanded shows every step; a finished card rests collapsed to its 30px header.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => Set(ref _isExpanded, value);
+    }
+
+    /// <summary>Steps hidden behind the "N earlier steps" line while running.</summary>
+    public int EarlierCount
+    {
+        get => _earlierCount;
+        set { if (Set(ref _earlierCount, value)) { Raise(nameof(HasEarlier)); Raise(nameof(EarlierText)); } }
+    }
+
+    public bool HasEarlier => _earlierCount > 0;
+
+    public string EarlierText => Loc.F("Feed_EarlierSteps", _earlierCount);
+
+    public ObservableCollection<MemberTurnStep> Steps { get; } = [];
+
+    /// <summary>The newest ≤3 steps (the running view); maintained by <see cref="AddStep"/>.</summary>
+    public ObservableCollection<MemberTurnStep> VisibleSteps { get; } = [];
+
+    public void AddStep(MemberTurnStep step)
+    {
+        Steps.Add(step);
+        VisibleSteps.Add(step);
+        while (VisibleSteps.Count > 3)
+        {
+            VisibleSteps.RemoveAt(0);
+        }
+
+        EarlierCount = Steps.Count - VisibleSteps.Count;
+    }
+}
+
+/// <summary>A single line inside a member turn card: a tool call (glyph + name + detail) or a
+/// spoken message (dot + text). GlyphKey names an Icons.xaml geometry resource.</summary>
+public sealed class MemberTurnStep
+{
+    public bool IsMessage { get; init; }
+    public string GlyphKey { get; init; } = "IconCode";
+    public string ToolName { get; init; } = "";
+    public string Detail { get; init; } = "";
+    public string Text { get; init; } = "";
 }

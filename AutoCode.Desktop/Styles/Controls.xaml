@@ -279,20 +279,24 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Padding" Value="30,7,11,7"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="9" Padding="30,7,11,7">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}"/>
                         </Trigger>
-                        <Trigger Property="Tag" Value="True">
+                        <!-- Active row: rows set Tag={Binding IsActive}, but a property Trigger can't
+                             match a boxed bool against "True" — bind the DataContext's IsActive
+                             directly (rows without one, e.g. ecosystem rows, simply never match). -->
+                        <DataTrigger Binding="{Binding IsActive}" Value="True">
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface4Brush}"/>
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                        </Trigger>
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

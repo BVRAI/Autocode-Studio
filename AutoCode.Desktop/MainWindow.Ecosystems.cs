@@ -88,6 +88,10 @@ public partial class MainWindow
                     Id = eco.Id,
                     Name = eco.Name,
                     MemberCountText = Loc.F("EcosystemMembers", eco.MemberRoots.Count),
+                    HasProjects = eco.MemberRoots.Count > 0,
+                    EmptyHint = Loc.F("EcoNoProjectsHint", eco.Name),
+                    // Empty ecosystems never auto-expand (design spec §5); non-empty open showing members.
+                    IsExpanded = eco.MemberRoots.Count > 0,
                 };
                 var captured = node;
                 node.ToggleCommand = new RelayCommand(_ => captured.IsExpanded = !captured.IsExpanded);
@@ -110,6 +114,7 @@ public partial class MainWindow
         }
 
         _vm.HasProjects = _vm.Projects.Count > 0;
+        RefreshEcosystemChatMeta();   // roster subtitles track membership; this runs on every rebuild
     }
 
     /// <summary>Flip the "group projects by ecosystem" preference, persist it, and rebuild the sidebar.</summary>
@@ -122,6 +127,35 @@ public partial class MainWindow
     }
 
     // ---- ecosystem chat: a session rooted at the manifest repo (Kind=ecosystem, no worktree) ----
+
+    /// <summary>Header roster line for an ecosystem chat, e.g. "3 members — web · api · mobile".</summary>
+    private static string EcosystemRosterSubtitle(EcosystemRecord eco)
+        => eco.MemberRoots.Count == 0
+            ? ""
+            : Loc.F("EcoMembersSubtitle", eco.MemberRoots.Count, string.Join(" · ", eco.MemberRoots.Select(LeafName)));
+
+    /// <summary>Refresh the roster subtitle on any live ecosystem chats (called after membership changes).</summary>
+    private void RefreshEcosystemChatMeta()
+    {
+        foreach (var chat in _vm.Sessions.Sessions.Where(s => s.Kind == WorkspaceSession.EcosystemKind))
+        {
+            var eco = _ecosystems.FirstOrDefault(e => e.Id == chat.EcosystemId);
+            if (eco is not null)
+            {
+                chat.ChatSubtitle = EcosystemRosterSubtitle(eco);
+            }
+        }
+    }
+
+    /// <summary>Double-click on a grouped ecosystem header opens its chat (single click still toggles).</summary>
+    private void EcosystemHeader_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2 && (sender as FrameworkElement)?.DataContext is EcosystemNode node)
+        {
+            OpenEcosystemChatFromNode(node);
+            e.Handled = true;
+        }
+    }
 
     private void OpenEcosystemChatFromNode(EcosystemNode node)
     {

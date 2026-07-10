@@ -14,6 +14,12 @@ public sealed class EcosystemNode : ObservableObject
     public string Name { get; init; } = "";
     public string MemberCountText { get; init; } = "";
 
+    /// <summary>Whether the ecosystem has member projects (drives the grouped empty-state hint).</summary>
+    public bool HasProjects { get; init; } = true;
+
+    /// <summary>Localized hint shown inside an expanded empty group ("Right-click any project → Add to …").</summary>
+    public string EmptyHint { get; init; } = "";
+
     public bool IsExpanded
     {
         get => _isExpanded;
@@ -141,6 +147,12 @@ public sealed class ApprovalVM : ObservableObject
     public string ToolName { get; init; } = "";
     public string Target { get; init; } = "";
     public ObservableCollection<PreviewLine> PreviewLines { get; } = [];
+
+    /// <summary>dispatch_to_member approvals swap the raw preview for a "Send task to ‹member›" body.</summary>
+    public bool IsDispatch { get; init; }
+    public string DispatchMember { get; init; } = "";
+    public string DispatchTask { get; init; } = "";
+    public string DispatchContext { get; init; } = "";
 }
 
 /// <summary>A single line of an approval preview, classified for diff colouring.</summary>

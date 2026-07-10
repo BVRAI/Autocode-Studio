@@ -50,5 +50,6 @@
     <Geometry x:Key="IconKey">M3.5,13.5 A3,3 0 0 1 9.5,13.5 A3,3 0 0 1 3.5,13.5 Z M8.7,11.3 L16,4 M13,7 L15.4,9.4</Geometry>
     <Geometry x:Key="IconLink">M8.2,11.8 A3,3 0 0 1 8.2,7.6 L10,5.8 A3,3 0 0 1 14.2,10 L13,11.4 M11.8,8.2 A3,3 0 0 1 11.8,12.4 L10,14.2 A3,3 0 0 1 5.8,10 L7,8.6</Geometry>
     <Geometry x:Key="IconCubeAlt">M10,2.5 L17,6.5 L17,13.5 L10,17.5 L3,13.5 L3,6.5 Z</Geometry>
+    <Geometry x:Key="IconFlag">M5.5,17.5 L5.5,3.5 L15,3.5 L13,7 L15,10.5 L5.5,10.5</Geometry>
 
 </ResourceDictionary>

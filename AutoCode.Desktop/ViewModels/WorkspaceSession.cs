@@ -30,6 +30,9 @@ public sealed class WorkspaceSession : ObservableObject
     /// <summary>For an ecosystem chat (<see cref="EcosystemKind"/>), the id of the ecosystem it hosts.</summary>
     public string? EcosystemId { get; set; }
 
+    /// <summary>Binding-friendly Kind check (drives the cube marker on ecosystem-chat rows).</summary>
+    public bool IsEcosystemChat => Kind == EcosystemKind;
+
     /// <summary>Mutable session config (model/mode applied per turn). Set in BuildLoop.</summary>
     public SessionContext? Context { get; set; }
 
@@ -101,6 +104,10 @@ public sealed class WorkspaceSession : ObservableObject
     /// <summary>Routed (@mention) prompts waiting for this session to finish its current turn; drained
     /// one at a time when a turn completes. Only populated for members that were busy when dispatched.</summary>
     public Queue<string> PendingPrompts { get; } = new();
+
+    /// <summary>For an ecosystem chat: the currently-running member turn cards in its feed, keyed by
+    /// member display name (the tee appends steps to these; removed when the turn finishes).</summary>
+    public Dictionary<string, MemberTurnCardBlock> RunningTurnCards { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     // ---- status ----
     /// <summary>True for the one session currently shown in the main view (set by SessionManager).</summary>

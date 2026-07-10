@@ -25,6 +25,66 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <!-- Ecosystem sidebar chrome (design spec §1): the 26×26 open-chat spark and the 22×22
+             flat↔grouped toggle chip (cream EditableBrush when ON, the app's signature treatment). -->
+        <Style x:Key="EcoSparkButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource HoverStrongBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="EcoToggleChipStyle" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
+                            </Trigger>
+                            <!-- ON state binds the VM directly (DataContext = MainViewModel); ordered last
+                                 so the cream chip wins over hover. -->
+                            <DataTrigger Binding="{Binding GroupByEcosystem}" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource EditableBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource EditableInkBrush}"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Shared sidebar row templates. Implicit (DataType, no key) so the flat PROJECTS list AND
              the projects nested under an ecosystem group render identically with zero duplication. -->
         <DataTemplate DataType="{x:Type vm:SessionNode}">
@@ -90,16 +150,19 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Grouped ecosystem header (keyed: EcosystemNode also has the bare-list rendering). Mirrors
-             the project row — chevron + cube glyph + name + member count; expands to its member projects. -->
+        <!-- Grouped ecosystem header (design spec §1, option B "weight + rail"): 32px header
+             (13 SemiBold + count + 26px spark), children bound by a 1.5px rail; body click toggles,
+             double-click opens the chat, spark always opens. Nested rows reuse the implicit
+             templates — the rail's 19px margin lands them at the spec's 30/49 absolute indents. -->
         <DataTemplate x:Key="EcosystemGroupTemplate" DataType="{x:Type vm:EcosystemNode}">
             <StackPanel>
-                <Grid>
+                <Grid PreviewMouseLeftButtonDown="EcosystemHeader_PreviewMouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Style="{StaticResource SidebarProjectStyle}" Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
+                    <Button Grid.Column="0" Style="{StaticResource SidebarProjectStyle}" Padding="11,7,4,7"
+                            Command="{Binding ToggleCommand}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -113,20 +176,30 @@
                             <ctl:IconGlyph Grid.Column="1" Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,8,0"
                                            Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                       FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextBrush}"/>
+                                       FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
                             <TextBlock Grid.Column="3" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
                                        FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
                         </Grid>
                     </Button>
-                    <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" Margin="2,0,4,0"
+                    <Button Grid.Column="1" Style="{StaticResource EcoSparkButtonStyle}" VerticalAlignment="Center" Margin="0,0,4,0"
                             Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                             CommandParameter="{Binding}"
                             ToolTip="{DynamicResource L_Tooltip_OpenEcosystemChat}">
                         <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="14" Height="14"/>
                     </Button>
                 </Grid>
-                <ItemsControl ItemsSource="{Binding Projects}"
-                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"/>
+                <Border Margin="19,0,0,4" Padding="0,0,0,2" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1.5,0,0,0"
+                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding HasProjects, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                            <TextBlock Text="{DynamicResource L_EcoNoProjects}" Margin="13,6,11,2" FontSize="12.5"
+                                       Foreground="{DynamicResource Text3Brush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding EmptyHint}" Margin="13,0,11,7" FontSize="11.5"
+                                       Foreground="{DynamicResource TextFaintBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding Projects}"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
@@ -372,17 +445,31 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" Tag="{Binding IsActive}"
+                                            <Button Grid.Column="0" Tag="{Binding IsActive}"
                                                     PreviewMouseLeftButtonDown="WorkspaceTitle_PreviewMouseLeftButtonDown"
                                                     AutomationProperties.Name="{Binding ProjectRootShort}"
                                                     Command="{Binding DataContext.ActivateSessionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <!-- Ecosystem chats swap the 30px lead for a cube marker (design spec §3). -->
+                                                    <Style TargetType="Button" BasedOn="{StaticResource SidebarSessionStyle}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="ecosystem">
+                                                                <Setter Property="Padding" Value="11,7,11,7"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <Grid Grid.Column="0">
+                                                    <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="13" Height="13" Margin="0,0,6,0"
+                                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                                                                   Visibility="{Binding IsEcosystemChat, Converter={StaticResource BoolToVis}}"/>
+                                                    <Grid Grid.Column="1">
                                                         <TextBlock Text="{Binding ChatTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
@@ -400,7 +487,7 @@
                                                                  VerticalAlignment="Center" MinWidth="24" CaretBrush="{DynamicResource TextBrush}"
                                                                  KeyDown="WorkspaceTitleEditor_KeyDown" LostKeyboardFocus="WorkspaceTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
                                                     </Grid>
-                                                    <Ellipse Grid.Column="1" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
+                                                    <Ellipse Grid.Column="2" Width="6" Height="6" Margin="8,0,2,0" VerticalAlignment="Center" Fill="{DynamicResource AmberBrush}"
                                                              Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}"/>
                                                 </Grid>
                                             </Button>
@@ -415,54 +502,61 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- Group-by-ecosystem toggle (Phase 2 Stage A; placement/appearance are the design pass's job). -->
-                            <Grid Margin="11,12,4,0" Visibility="{Binding HasEcosystems, Converter={StaticResource BoolToVis}}">
-                                <Button HorizontalAlignment="Right" Style="{StaticResource IconButtonStyle}"
-                                        Tag="{Binding GroupByEcosystem}" Click="GroupByEcosystemToggle_Click"
+                            <!-- ECOSYSTEMS header row: caps label + the flat↔grouped toggle chip (design spec §1). -->
+                            <Grid Height="22" Margin="11,14,4,4" Visibility="{Binding HasEcosystems, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Style="{StaticResource EcoToggleChipStyle}"
+                                        Click="GroupByEcosystemToggle_Click"
                                         ToolTip="{DynamicResource L_Tooltip_GroupByEcosystem}">
-                                    <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="16" Height="16"/>
+                                    <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="14" Height="14"/>
                                 </Button>
                             </Grid>
 
-                            <!-- Bare ECOSYSTEMS list: shown when ecosystems exist but grouping is off. -->
-                            <StackPanel Visibility="{Binding ShowBareEcosystems, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
-                                <ItemsControl ItemsSource="{Binding Ecosystems}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:EcosystemNode}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" PreviewMouseRightButtonUp="EcosystemRow_RightClick">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
-                                                                   FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                                                    </Grid>
-                                                </Button>
-                                                <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" Margin="2,0,4,0"
-                                                        Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="{DynamicResource L_Tooltip_OpenEcosystemChat}">
-                                                    <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="14" Height="14"/>
-                                                </Button>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
+                            <!-- Bare ECOSYSTEMS list (grouping off): row body opens the chat; spark ditto. -->
+                            <ItemsControl ItemsSource="{Binding Ecosystems}"
+                                          Visibility="{Binding ShowBareEcosystems, Converter={StaticResource BoolToVis}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:EcosystemNode}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Style="{StaticResource SidebarSessionStyle}" Padding="11,7,11,7"
+                                                    Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    PreviewMouseRightButtonUp="EcosystemRow_RightClick">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="13" Height="13" Margin="0,0,6,0"
+                                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="13"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding MemberCountText}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                               FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
+                                                </Grid>
+                                            </Button>
+                                            <Button Grid.Column="1" Style="{StaticResource EcoSparkButtonStyle}" VerticalAlignment="Center" Margin="2,0,4,0"
+                                                    Command="{Binding DataContext.OpenEcosystemChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="{DynamicResource L_Tooltip_OpenEcosystemChat}">
+                                                <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                            <!-- Grouped ECOSYSTEMS: each ecosystem is an expandable header with its member projects nested. -->
-                            <StackPanel Visibility="{Binding ShowGrouped, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="{DynamicResource L_Ecosystems}" Style="{StaticResource CapsLabel}" Margin="11,14,11,6"/>
-                                <ItemsControl ItemsSource="{Binding EcosystemGroups}" ItemTemplate="{StaticResource EcosystemGroupTemplate}"/>
-                            </StackPanel>
+                            <!-- Grouped ECOSYSTEMS: expandable headers with member projects on a rail. -->
+                            <ItemsControl ItemsSource="{Binding EcosystemGroups}" ItemTemplate="{StaticResource EcosystemGroupTemplate}"
+                                          Visibility="{Binding ShowGrouped, Converter={StaticResource BoolToVis}}"/>
 
                             <!-- PROJECTS: all projects (flat mode) or only the ungrouped ones (grouped mode). Uses the implicit ProjectNode template. -->
                             <StackPanel Visibility="{Binding HasProjects, Converter={StaticResource BoolToVis}}">
@@ -545,8 +639,24 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding ChatTitle}" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
+                            <!-- Ecosystem chat marker tile (design spec §3): 26×26 AccentSoft + cube. -->
+                            <Border Grid.Column="0" Width="26" Height="26" CornerRadius="7" Margin="0,0,8,0" VerticalAlignment="Center"
+                                    Background="{DynamicResource AccentSoftBrush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Kind}" Value="ecosystem">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="16" Height="16" Foreground="{DynamicResource AccentBrush}"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{Binding ChatTitle}" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Visible"/>
@@ -559,11 +669,11 @@
                                 </TextBlock.Style>
                             </TextBlock>
                             <!-- FallbackValue keeps the editor collapsed while Active is null (startup) -->
-                            <TextBox Grid.Column="0" Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitleHeader, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" Focusable="True" Panel.ZIndex="1"
+                            <TextBox Grid.Column="1" Text="{Binding EditableTitle, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditingTitleHeader, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" Focusable="True" Panel.ZIndex="1"
                                      FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,-1,0,0"
                                      VerticalAlignment="Center" MinWidth="32" CaretBrush="{DynamicResource TextBrush}"
                                      KeyDown="HeaderTitleEditor_KeyDown" LostKeyboardFocus="HeaderTitleEditor_LostKeyboardFocus" IsVisibleChanged="TitleEditor_IsVisibleChanged"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center">
+                            <TextBlock Grid.Column="2" Text="{Binding ChatSubtitle}" Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center" MaxWidth="250" TextTrimming="CharacterEllipsis">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Visible"/>

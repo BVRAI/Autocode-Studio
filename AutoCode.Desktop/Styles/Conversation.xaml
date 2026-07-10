@@ -190,25 +190,231 @@
         </Border>
     </DataTemplate>
 
-    <!-- ===================== ecosystem member activity (feed) ===================== -->
-    <!-- Attributed activity teed from a member session into the ecosystem chat. Stage-B minimal;
-         design pass #2 restyles (per-Kind accents, chip treatment). -->
-    <DataTemplate DataType="{x:Type vm:MemberActivityBlock}">
-        <Border Background="{DynamicResource Surface3Brush}" BorderBrush="{DynamicResource BorderBrush2}"
-                BorderThickness="2,0,0,0" CornerRadius="4" Padding="10,6" Margin="0,0,64,0">
-            <StackPanel Orientation="Horizontal">
-                <Border Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Member}" FontFamily="{DynamicResource UiFontFamily}" FontSize="11"
-                               FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
-                </Border>
-                <TextBlock Text="{Binding Summary}" FontFamily="{DynamicResource UiFontFamily}" FontSize="12.5"
-                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding Detail}" FontFamily="{DynamicResource UiFontFamily}" FontSize="12"
-                           Foreground="{DynamicResource Text3Brush}" Margin="7,0,0,0" VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Visibility="{Binding Detail, Converter={StaticResource NullToVis}}"/>
+    <!-- ===================== ecosystem member feed (design spec §2) ===================== -->
+    <!-- One line inside a member turn card: a tool call (glyph + mono name + detail) or a message. -->
+    <DataTemplate DataType="{x:Type vm:MemberTurnStep}">
+        <Grid MinHeight="24" Margin="10,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ctl:IconGlyph x:Name="StepGlyph" Geometry="{StaticResource IconCode}" Width="12" Height="12"
+                           Foreground="{DynamicResource Text3Brush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Ellipse x:Name="MsgDot" Width="4" Height="4" Fill="{DynamicResource TextFaintBrush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+            <TextBlock x:Name="StepTool" Grid.Column="1" Text="{Binding ToolName}" Margin="8,0,0,0"
+                       FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+            <TextBlock x:Name="StepDetail" Grid.Column="2" Text="{Binding Detail}" Margin="8,0,0,0"
+                       FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource Text3Brush}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}"/>
+            <TextBlock x:Name="StepText" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Text}" Margin="8,0,0,0"
+                       FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"
+                       TextWrapping="Wrap" MaxHeight="36" ToolTip="{Binding Text}" Visibility="Collapsed"/>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsMessage}" Value="True">
+                <Setter TargetName="StepGlyph" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="MsgDot" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="StepTool" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="StepDetail" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="StepText" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding GlyphKey}" Value="IconFile">
+                <Setter TargetName="StepGlyph" Property="Geometry" Value="{StaticResource IconFile}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding GlyphKey}" Value="IconTerminal">
+                <Setter TargetName="StepGlyph" Property="Geometry" Value="{StaticResource IconTerminal}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding GlyphKey}" Value="IconSearch">
+                <Setter TargetName="StepGlyph" Property="Geometry" Value="{StaticResource IconSearch}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding GlyphKey}" Value="IconGlobe">
+                <Setter TargetName="StepGlyph" Property="Geometry" Value="{StaticResource IconGlobe}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding GlyphKey}" Value="IconCheck">
+                <Setter TargetName="StepGlyph" Property="Geometry" Value="{StaticResource IconCheck}"/>
+                <Setter TargetName="StepGlyph" Property="Foreground" Value="{DynamicResource GreenBrush}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- Member turn card: header (chip + live status; pulsing amber while running) + step lines.
+         Running shows the newest 3 with an "N earlier steps" expander; finished rests collapsed. -->
+    <DataTemplate DataType="{x:Type vm:MemberTurnCardBlock}">
+        <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                CornerRadius="10" Margin="0,0,64,-12" Padding="0,0,0,4">
+            <StackPanel>
+                <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}" Focusable="False" Cursor="Hand">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="Transparent" MinHeight="30" Padding="10,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ctl:IconGlyph x:Name="CollapseChev" Geometry="{StaticResource IconChevronDown}" Width="12" Height="12"
+                                                   Margin="0,0,8,0" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                    <Border Grid.Column="1" Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Member}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                                    </Border>
+                                    <Ellipse x:Name="PulseDot" Grid.Column="3" Width="6" Height="6" Margin="0,0,8,0" VerticalAlignment="Center"
+                                             Fill="{DynamicResource AmberBrush}" Visibility="Collapsed"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                                    <Setter TargetName="CollapseChev" Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                    <Setter TargetName="PulseDot" Property="Visibility" Value="Visible"/>
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard x:Name="PulseSb">
+                                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                <DoubleAnimation Storyboard.TargetName="PulseDot" Storyboard.TargetProperty="Opacity"
+                                                                 From="1" To="0.4" Duration="0:0:0.6"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <StopStoryboard BeginStoryboardName="PulseSb"/>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
+                <ToggleButton x:Name="EarlierBtn" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Focusable="False" Cursor="Hand" Visibility="Collapsed">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="Transparent" MinHeight="24" Padding="10,2">
+                                <StackPanel Orientation="Horizontal">
+                                    <Grid Width="16">
+                                        <ctl:IconGlyph Geometry="{StaticResource IconChevron}" Width="11" Height="11"
+                                                       Foreground="{DynamicResource Text3Brush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding EarlierText}" Margin="8,0,0,0" FontSize="12"
+                                               Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
+                <ItemsControl x:Name="RecentList" ItemsSource="{Binding VisibleSteps}" Visibility="Collapsed"/>
+                <ItemsControl x:Name="FullList" ItemsSource="{Binding Steps}" Visibility="Collapsed"/>
             </StackPanel>
         </Border>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                <Setter TargetName="FullList" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsExpanded}" Value="False"/>
+                    <Condition Binding="{Binding IsRunning}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="RecentList" Property="Visibility" Value="Visible"/>
+            </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsExpanded}" Value="False"/>
+                    <Condition Binding="{Binding IsRunning}" Value="True"/>
+                    <Condition Binding="{Binding HasEarlier}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="EarlierBtn" Property="Visibility" Value="Visible"/>
+            </MultiDataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- Standalone feed rows: report (accent milestone card) / error (amber) / queued (ghost). -->
+    <DataTemplate DataType="{x:Type vm:MemberActivityBlock}">
+        <Grid Margin="0,0,64,-12">
+            <Border x:Name="RepCard" Visibility="Collapsed" Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,9">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ctl:IconGlyph Geometry="{StaticResource IconFlag}" Width="14" Height="14" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Member}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{DynamicResource L_Feed_Report}" Margin="8,0,0,0" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontSize="11" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{Binding Detail}" Margin="0,5,0,0" FontSize="13" LineHeight="19"
+                               Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <Border x:Name="ErrCard" Visibility="Collapsed" Background="{DynamicResource AmberBgBrush}"
+                    BorderBrush="{DynamicResource AmberLineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,8">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ctl:IconGlyph Geometry="{StaticResource IconAlert}" Width="14" Height="14" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource AmberBrush}" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Member}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding Summary}" Margin="8,0,0,0" FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontSize="11" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{Binding Detail}" Margin="0,4,0,0" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12" LineHeight="17"
+                               Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap" MaxHeight="51" ToolTip="{Binding Detail}"
+                               Visibility="{Binding Detail, Converter={StaticResource NullToVis}}"/>
+                </StackPanel>
+            </Border>
+            <Border x:Name="QueRow" Visibility="Collapsed" Background="Transparent"
+                    BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="8" Padding="10,5" MinHeight="26">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ctl:IconGlyph Geometry="{StaticResource IconDots}" Width="12" Height="12" Margin="0,0,8,0" Filled="True"
+                                   Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Background="{DynamicResource Surface4Brush}" CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Member}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Text2Brush}"/>
+                    </Border>
+                    <TextBlock Grid.Column="2" Text="{Binding Summary}" Margin="8,0,0,0" FontSize="12"
+                               Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Kind}" Value="report">
+                <Setter TargetName="RepCard" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Kind}" Value="error">
+                <Setter TargetName="ErrCard" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Kind}" Value="queued">
+                <Setter TargetName="QueRow" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- ===================== working indicator ===================== -->

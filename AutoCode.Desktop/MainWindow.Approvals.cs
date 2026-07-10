@@ -45,6 +45,22 @@ public partial class MainWindow
             target = Convert.ToString(c) ?? "";
         }
 
+        // Manager dispatches get a readable "Send task to <member>" body instead of raw JSON.
+        if (request.ToolName == "dispatch_to_member")
+        {
+            var member = request.Input.TryGetValue("member", out var m) ? Convert.ToString(m) ?? "" : "";
+            var task = request.Input.TryGetValue("task", out var t) ? Convert.ToString(t) ?? "" : "";
+            return new ApprovalVM
+            {
+                ToolName = request.ToolName,
+                Target = member,
+                IsDispatch = true,
+                DispatchMember = member,
+                DispatchTask = task,
+                DispatchContext = Loc.F("Dispatch_Context", member),
+            };
+        }
+
         var vm = new ApprovalVM { ToolName = request.ToolName, Target = target };
         foreach (var line in (request.Preview ?? "").Replace("\r\n", "\n").Split('\n'))
         {
