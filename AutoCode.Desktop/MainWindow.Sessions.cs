@@ -243,6 +243,16 @@ public partial class MainWindow
             registry.Register(new Tools.ReportToEcosystemTool());
         }
 
+        // Builtin-driven ecosystem chats get the manager's orchestration tools. dispatch_to_member
+        // declares Mutating, so the loop's mode gate applies: blocked in Planning, user-approved in
+        // Default, auto in Full access. Closures capture this session as the manager.
+        if (session.Kind == WorkspaceSession.EcosystemKind)
+        {
+            var manager = session;
+            registry.Register(new Orchestration.DispatchToMemberTool((member, task, ct) => DispatchForManagerAsync(manager, member, task, ct)));
+            registry.Register(new Orchestration.ListMembersTool(() => ListMembersForManagerAsync(manager)));
+        }
+
         var loop = new AgentLoop(
             _config, store, checkpoints, router, registry,
             evt => EmitAsync(session, evt),

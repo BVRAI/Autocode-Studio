@@ -172,8 +172,9 @@ public partial class MainWindow : Window
 
     /// <summary>Run one turn for a specific session: apply the composer model/mode, echo the user bubble,
     /// submit to its backend, then finalize (usage, files, resume-sidecar, worktree commit, changes). Shared
-    /// by the active chat and by @mention-routed member sessions; drains this session's queued prompts after.</summary>
-    private async Task SubmitPromptAsync(WorkspaceSession session, string prompt)
+    /// by the active chat, @mention-routed member sessions, and manager dispatches (which override the mode
+    /// to Autocode and link cancellation to the manager's token); drains queued prompts after.</summary>
+    private async Task SubmitPromptAsync(WorkspaceSession session, string prompt, AgentMode? modeOverride = null, CancellationToken linkedTo = default)
     {
         if (session.Backend is null || session.Context is null)
         {
@@ -181,13 +182,15 @@ public partial class MainWindow : Window
         }
 
         SaveModelToConfig();
-        session.Context = session.Context.WithMode(_vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model))
+        session.Context = session.Context.WithMode(modeOverride ?? _vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model))
             .WithSystemAppendix(BuildEcosystemBriefing(session));
         UpdateSessionMeta(session);
         UpdateActiveSessionTitle(session, prompt);
 
         session.RunCts?.Cancel();
-        session.RunCts = new CancellationTokenSource();
+        session.RunCts = linkedTo.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(linkedTo)
+            : new CancellationTokenSource();
         ResetTurnState(session);
         session.Conversation.Add(new UserBubbleBlock { Text = prompt });
         if (IsActiveSession(session)) { ScrollChatToEnd(); }

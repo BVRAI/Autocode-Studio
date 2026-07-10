@@ -17,7 +17,7 @@ public partial class MainWindow
         if (session.Kind == WorkspaceSession.EcosystemKind)
         {
             var eco = _ecosystems.FirstOrDefault(e => e.Id == session.EcosystemId);
-            return eco is null ? null : CoordinatorBriefing(eco);
+            return eco is null ? null : CoordinatorBriefing(eco, session);
         }
 
         if (string.IsNullOrEmpty(session.ProjectRoot)
@@ -51,7 +51,7 @@ public partial class MainWindow
         return sb.ToString().TrimEnd();
     }
 
-    private string CoordinatorBriefing(EcosystemRecord eco)
+    private string CoordinatorBriefing(EcosystemRecord eco, WorkspaceSession session)
     {
         var members = eco.MemberRoots.Select(LeafName).ToList();
         var sb = new StringBuilder();
@@ -61,6 +61,17 @@ public partial class MainWindow
             : "No member projects have been added yet.");
         sb.AppendLine("Your files: manifest.json (membership — maintained by the app), checklist.md (component checklist), contract/data-contract.md (shared data contract), design-tokens/tokens.json, reports.md (milestones reported by member agents — append-only log).");
         sb.AppendLine("Maintain the checklist, contract, and tokens as the product evolves. Member agents' live activity is relayed to the user separately; you don't need to restate it.");
+
+        // Only the builtin engine can receive the injected orchestration tools (WireLoop).
+        if (session.AgentId == "builtin" && members.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("You can also manage the members directly:");
+            sb.AppendLine("- `list_members` — each member's handle and whether its agent is busy or idle.");
+            sb.AppendLine("- `dispatch_to_member` — send one member a task and wait for its outcome. The member cannot see this conversation, so write each task as a complete, self-contained instruction (goal, relevant paths, what the shared contract requires, what done looks like). Dispatch one task at a time; review the outcome (and reports.md / the checklist) before the next.");
+            sb.AppendLine("Dispatches may require the user's approval — if one is declined or revised, adapt your plan rather than re-sending it unchanged. If a member is busy, do other useful work or tell the user; don't retry in a loop. Update the checklist when dispatched work completes.");
+        }
+
         return sb.ToString().TrimEnd();
     }
 }

@@ -29,11 +29,7 @@ public partial class MainWindow
             return null;
         }
 
-        var byHandle = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var root in eco.MemberRoots)
-        {
-            byHandle[LeafName(root)] = root;   // duplicate leaf names collide (last wins) — rare, noted
-        }
+        var byHandle = MemberRootsByHandle(eco);
 
         var roots = new List<string>();
         var rest = input.TrimStart();
@@ -145,6 +141,20 @@ public partial class MainWindow
         }
 
         await StartNewSession(root);
+    }
+
+    /// <summary>Handle → member-root map for an ecosystem. A handle is the member project's leaf
+    /// folder name (duplicate leaf names collide, last wins — rare, accepted). Shared by @mention
+    /// parsing and the manager's dispatch tool.</summary>
+    private static Dictionary<string, string> MemberRootsByHandle(EcosystemRecord eco)
+    {
+        var byHandle = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in eco.MemberRoots)
+        {
+            byHandle[LeafName(root)] = root;
+        }
+
+        return byHandle;
     }
 
     private WorkspaceSession? LiveMemberSession(string root)

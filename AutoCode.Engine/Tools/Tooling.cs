@@ -7,7 +7,10 @@ using AutoCode.Engine.Session;
 
 namespace AutoCode.Engine.Tools;
 
-public sealed record ToolDefinition(string Name, string Description, JsonNode InputSchema);
+/// <summary>Tool metadata. <paramref name="Mutating"/> marks tools whose execution changes state
+/// beyond the conversation (files, processes, other sessions) — the agent loop's mode gate treats
+/// them like the built-in mutating set: blocked in Planning, approval-prompted in Default.</summary>
+public sealed record ToolDefinition(string Name, string Description, JsonNode InputSchema, bool Mutating = false);
 
 public sealed record ToolResult(
     string Summary,
@@ -71,6 +74,11 @@ public sealed class ToolRegistry
     {
         _tools[tool.Definition.Name] = tool;
     }
+
+    /// <summary>Whether a registered tool declared itself mutating (see <see cref="ToolDefinition.Mutating"/>).
+    /// Unknown names return false — the loop's hardcoded mutating set still covers the built-ins.</summary>
+    public bool IsMutating(string name)
+        => _tools.TryGetValue(name, out var tool) && tool.Definition.Mutating;
 
     public async Task<ToolResult> ExecuteAsync(
         string name,

@@ -583,9 +583,11 @@ public sealed class AgentLoop
         return EmitAsync(new PlanEvent(DateTimeOffset.Now, items));
     }
 
-    private static GateDecision GateFor(AgentMode mode, string toolName)
+    private GateDecision GateFor(AgentMode mode, string toolName)
     {
-        if (!MutatingTools.Contains(toolName))
+        // Mutating = the hardcoded built-in set, plus any registered tool that declared itself
+        // mutating via ToolDefinition.Mutating (e.g. host-injected orchestration tools).
+        if (!MutatingTools.Contains(toolName) && !_registry.IsMutating(toolName))
         {
             return GateDecision.Allow;
         }
