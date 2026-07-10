@@ -90,6 +90,13 @@ public static class PromptBuilder
         sb.AppendLine("# Output rules");
         sb.AppendLine("When done, finish with a short summary of what changed and what was verified. If ambiguous, ask one focused question.");
 
+        if (!string.IsNullOrWhiteSpace(context.SystemAppendix))
+        {
+            sb.AppendLine();
+            sb.AppendLine("# Host briefing");
+            sb.AppendLine(context.SystemAppendix);
+        }
+
         var volatileState = GitWorkingState(context.ProjectRoot);
         return (sb.ToString(), volatileState);
     }

@@ -28,7 +28,13 @@ public sealed record SessionContext(
     /// <summary>Per-turn iteration override; null uses the default backstop.</summary>
     public int? MaxIterations { get; init; }
 
+    /// <summary>Host-injected briefing appended to the system prompt (e.g. workspace-group context
+    /// composed by the shell). Null/empty = no extra section. The engine treats it as opaque text.</summary>
+    public string? SystemAppendix { get; init; }
+
     public SessionContext WithMode(AgentMode mode) => this with { Mode = mode };
+
+    public SessionContext WithSystemAppendix(string? text) => this with { SystemAppendix = text };
 
     public SessionContext WithModel(ModelConfig model) => this with { Model = model };
 

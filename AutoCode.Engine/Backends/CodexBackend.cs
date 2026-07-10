@@ -93,6 +93,13 @@ public sealed class CodexBackend : IAgentBackend
             return;
         }
 
+        // Codex has no system-prompt flag (exec arg schema is locked to the probe-verified set), so the
+        // host briefing rides the first prompt of a thread; resumed threads already carry it in context.
+        if (_threadId is null && !string.IsNullOrWhiteSpace(context.SystemAppendix))
+        {
+            input = $"<workspace_briefing>\n{context.SystemAppendix}\n</workspace_briefing>\n\n{input}";
+        }
+
         // Feed the prompt on stdin (the trailing "-" arg) and close it — codex blocks on an open pipe.
         await proc.StandardInput.WriteAsync(input);
         await proc.StandardInput.FlushAsync();

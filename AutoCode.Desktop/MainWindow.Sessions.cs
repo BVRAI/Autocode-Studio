@@ -233,6 +233,16 @@ public partial class MainWindow
         var checkpoints = new CheckpointStore(session.SessionDir);
         var router = new AutoCode.Engine.Llm.LlmRouter(new AuthResolver(_config, ProxyTokenProvider));
         var registry = new ToolRegistry(_config);
+
+        // Members of an ecosystem get the reporting channel (membership checked at wire time; a
+        // project assigned to an ecosystem mid-session gains the tool on reopen — the briefing is
+        // the live part). The tool is pure; the ecosystem feed tee reacts to its ToolCallEvent.
+        if (!string.IsNullOrEmpty(session.ProjectRoot)
+            && _ecosystemByRoot.ContainsKey(EcosystemIndex.NormalizeRoot(session.ProjectRoot)))
+        {
+            registry.Register(new Tools.ReportToEcosystemTool());
+        }
+
         var loop = new AgentLoop(
             _config, store, checkpoints, router, registry,
             evt => EmitAsync(session, evt),

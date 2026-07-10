@@ -71,7 +71,7 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         _cancelled = false;
         _toolNames.Clear();
 
-        var psi = BuildStartInfo(context.ProjectRoot);
+        var psi = BuildStartInfo(context.ProjectRoot, context.SystemAppendix);
         using var proc = new Process { StartInfo = psi };
         _process = proc;
 
@@ -242,7 +242,7 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         }
     }
 
-    private ProcessStartInfo BuildStartInfo(string workdir)
+    private ProcessStartInfo BuildStartInfo(string workdir, string? systemAppendix)
     {
         var psi = new ProcessStartInfo
         {
@@ -276,6 +276,13 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         {
             psi.ArgumentList.Add("--resume");
             psi.ArgumentList.Add(_claudeSessionId);
+        }
+
+        // Host briefing (e.g. workspace-group context) rides the CLI's own system prompt.
+        if (!string.IsNullOrWhiteSpace(systemAppendix))
+        {
+            psi.ArgumentList.Add("--append-system-prompt");
+            psi.ArgumentList.Add(systemAppendix);
         }
 
         var auth = _authProvider?.Invoke() ?? ExternalAgentAuth.Subscription;

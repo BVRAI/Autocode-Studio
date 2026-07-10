@@ -181,7 +181,8 @@ public partial class MainWindow : Window
         }
 
         SaveModelToConfig();
-        session.Context = session.Context.WithMode(_vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model));
+        session.Context = session.Context.WithMode(_vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model))
+            .WithSystemAppendix(BuildEcosystemBriefing(session));
         UpdateSessionMeta(session);
         UpdateActiveSessionTitle(session, prompt);
 

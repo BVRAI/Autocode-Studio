@@ -59,6 +59,32 @@ public static class EcosystemManifestService
         }
     }
 
+    /// <summary>Append a member agent's milestone report to the manifest repo's reports.md — the
+    /// durable log behind the live feed (the future manager agent reads it for history). Best-effort,
+    /// no per-report commit: the repo's next membership commit picks the file up.</summary>
+    public static async Task AppendReportAsync(EcosystemRecord eco, string member, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(eco.ManifestRoot);
+            var path = Path.Combine(eco.ManifestRoot, "reports.md");
+            var header = File.Exists(path)
+                ? ""
+                : $"# {eco.Name} — reports\n\nMilestones reported by member agents (newest last).\n\n";
+            var line = $"- [{DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm}Z] {member}: {message.Replace('\r', ' ').Replace('\n', ' ').Trim()}\n";
+            await File.AppendAllTextAsync(path, header + line);
+        }
+        catch
+        {
+            // Best-effort: a failed append never disturbs the session that reported.
+        }
+    }
+
     private static void WriteManifest(EcosystemRecord eco)
     {
         var manifest = new
