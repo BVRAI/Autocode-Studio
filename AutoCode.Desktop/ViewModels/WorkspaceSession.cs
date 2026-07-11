@@ -45,6 +45,34 @@ public sealed class WorkspaceSession : ObservableObject
         set => Set(ref _agentId, value);
     }
 
+    /// <summary>Per-session mode wire (see AgentCatalog.ModesFor for this session's harness):
+    /// builtin "planning|default|autocode|admin"; claude-code "plan|accept-edits|auto"; codex
+    /// "read-only|auto|full-access". The composer pill follows the active session.</summary>
+    private string _modeWire = "default";
+    public string ModeWire
+    {
+        get => _modeWire;
+        set => Set(ref _modeWire, value);
+    }
+
+    /// <summary>LLM provider for builtin sessions; the agent id for external ones (so backends can
+    /// tell whether the model choice was made for their harness).</summary>
+    private string _provider = "anthropic";
+    public string Provider
+    {
+        get => _provider;
+        set => Set(ref _provider, value);
+    }
+
+    /// <summary>Model id (builtin: catalog id; external: "default" = the CLI's own setting, or an
+    /// alias/custom id passed via the CLI's --model flag).</summary>
+    private string _modelId = "claude-opus-4-7";
+    public string ModelId
+    {
+        get => _modelId;
+        set => Set(ref _modelId, value);
+    }
+
     /// <summary>The agent driving this workspace — built-in engine or an external CLI (Claude Code / Codex).</summary>
     public IAgentBackend? Backend { get; set; }
 

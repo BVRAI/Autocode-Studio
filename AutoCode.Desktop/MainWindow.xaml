@@ -770,7 +770,9 @@
 
                             <Grid Grid.Row="1" Margin="10,0,10,10">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Style="{StaticResource ComposerIconButtonStyle}" ToolTip="{DynamicResource L_Tooltip_Attach}">
+                                    <!-- Harness drop-up: the "+" opens the agent picker (rarely changed). -->
+                                    <Button x:Name="HarnessButton" AutomationProperties.AutomationId="AgentPill" Style="{StaticResource ComposerIconButtonStyle}"
+                                            Click="AgentPill_Click" ToolTip="{DynamicResource L_Tooltip_Agent}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="18" Height="18"/>
                                     </Button>
                                     <Button x:Name="ModePill" AutomationProperties.AutomationId="ModePill" Style="{StaticResource PillButtonStyle}" Tag="{Binding ModeWire}" Margin="7,0,0,0" Click="ModePill_Click">
@@ -784,14 +786,6 @@
                                         <StackPanel Orientation="Horizontal">
                                             <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
                                             <TextBlock Text="{Binding ModelLabel}" VerticalAlignment="Center"/>
-                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button x:Name="AgentPill" AutomationProperties.AutomationId="AgentPill" Style="{StaticResource PillButtonStyle}" Margin="7,0,0,0" Click="AgentPill_Click"
-                                            ToolTip="{DynamicResource L_Tooltip_Agent}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <ctl:IconGlyph Geometry="{StaticResource IconSpark}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
-                                            <TextBlock Text="{Binding AgentLabel}" VerticalAlignment="Center"/>
                                             <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
@@ -958,47 +952,13 @@
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource L_Mode}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="default" Click="ModeMenu_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph Geometry="{StaticResource IconShieldCheck}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource L_Mode_Default}"/>
-                                <TextBlock Text="{DynamicResource L_Mode_Default_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" AutomationProperties.AutomationId="ModeFullAccess" Tag="autocode" Click="ModeMenu_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph Geometry="{StaticResource IconBolt}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource L_Mode_FullAccess}"/>
-                                <TextBlock Text="{DynamicResource L_Mode_FullAccess_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="planning" Click="ModeMenu_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph Geometry="{StaticResource IconPlan}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource L_Mode_PlanOnly}"/>
-                                <TextBlock Text="{DynamicResource L_Mode_PlanOnly_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="admin" Click="ModeMenu_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <ctl:IconGlyph Geometry="{StaticResource IconCrown}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Top"/>
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource L_Mode_Admin}"/>
-                                <TextBlock Text="{DynamicResource L_Mode_Admin_Desc}" FontSize="11.5" Foreground="{DynamicResource TextFaintBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Button>
+                    <!-- Items built per harness by BuildModeMenu (AgentCatalog.ModesFor). -->
+                    <StackPanel x:Name="ModeListPanel"/>
                 </StackPanel>
             </Border>
         </Popup>
 
-        <Popup x:Name="AgentPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=AgentPill}" AllowsTransparency="True" PopupAnimation="Fade">
+        <Popup x:Name="AgentPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=HarnessButton}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="260" Margin="0,0,0,6">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource L_Agent}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
@@ -1036,12 +996,15 @@
         <Popup x:Name="ModelPopup" StaysOpen="False" Placement="Top" PlacementTarget="{Binding ElementName=ModelPill}" AllowsTransparency="True" PopupAnimation="Fade">
             <Border Style="{StaticResource MenuCardBorder}" MinWidth="240" Margin="0,0,0,6">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource L_Provider}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="anthropic" Click="ProviderMenu_Click" Content="anthropic"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openai" Click="ProviderMenu_Click" Content="openai"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="xai" Click="ProviderMenu_Click" Content="xai"/>
-                    <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openrouter" Click="ProviderMenu_Click" Content="openrouter"/>
-                    <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    <!-- Providers apply to the builtin harness only; hidden for external CLIs. -->
+                    <StackPanel x:Name="ProviderSection">
+                        <TextBlock Text="{DynamicResource L_Provider}" Style="{StaticResource CapsLabel}" Margin="10,8,10,4"/>
+                        <Button Style="{StaticResource MenuItemButtonStyle}" Tag="anthropic" Click="ProviderMenu_Click" Content="anthropic"/>
+                        <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openai" Click="ProviderMenu_Click" Content="openai"/>
+                        <Button Style="{StaticResource MenuItemButtonStyle}" Tag="xai" Click="ProviderMenu_Click" Content="xai"/>
+                        <Button Style="{StaticResource MenuItemButtonStyle}" Tag="openrouter" Click="ProviderMenu_Click" Content="openrouter"/>
+                        <Border Height="1" Background="{DynamicResource BorderBrush2}" Margin="6,4"/>
+                    </StackPanel>
                     <TextBlock x:Name="ModelMenuLabel" Text="{DynamicResource L_Model}" Style="{StaticResource CapsLabel}" Margin="10,4,10,4"/>
                     <StackPanel x:Name="ModelListPanel"/>
                 </StackPanel>

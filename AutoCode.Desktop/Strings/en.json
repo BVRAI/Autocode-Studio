@@ -47,7 +47,7 @@
   "Mode": "MODE",
   "Mode_Default": "Default",
   "Mode_Default_Desc": "Edits & shell require approval",
-  "Mode_FullAccess": "Full access",
+  "Mode_FullAccess": "Auto",
   "Mode_FullAccess_Desc": "Auto-approve file edits & shell",
   "Mode_PlanOnly": "Plan only",
   "Mode_PlanOnly_Desc": "Read-only — no mutations",

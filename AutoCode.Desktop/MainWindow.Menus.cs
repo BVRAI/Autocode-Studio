@@ -4,6 +4,7 @@ using System.Windows.Media;
 using AutoCode.Desktop.Controls;
 using AutoCode.Desktop.ViewModels;
 using AutoCode.Engine.Agent;
+using AutoCode.Engine.Backends;
 using AutoCode.Engine.Llm;
 
 namespace AutoCode.Desktop;
@@ -102,18 +103,61 @@ public partial class MainWindow
         new AboutDialog(_configStore.ConfigPath) { Owner = this }.ShowDialog();
     }
 
-    private void ModePill_Click(object sender, RoutedEventArgs e) => ModePopup.IsOpen = true;
+    private void ModePill_Click(object sender, RoutedEventArgs e)
+    {
+        BuildModeMenu();
+        ModePopup.IsOpen = true;
+    }
+
+    /// <summary>Fill the mode menu from the active harness's catalog (modes differ per harness:
+    /// builtin Plan only/Default/Auto/Admin · Claude Code Plan/Accept edits/Auto · Codex
+    /// Read only/Auto/Full access). Same dynamic-menu pattern as BuildModelMenu.</summary>
+    private void BuildModeMenu()
+    {
+        ModeListPanel.Children.Clear();
+        foreach (var info in AgentCatalog.ModesFor(_vm.Active?.AgentId ?? "builtin"))
+        {
+            var glyph = new Controls.IconGlyph
+            {
+                Geometry = (System.Windows.Media.Geometry)FindResource(info.GlyphKey),
+                Width = 16,
+                Height = 16,
+                Margin = new Thickness(0, 0, 9, 0),
+                Foreground = (System.Windows.Media.Brush)FindResource("Text3Brush"),
+                VerticalAlignment = VerticalAlignment.Top,
+            };
+            var text = new StackPanel();
+            text.Children.Add(new System.Windows.Controls.TextBlock { Text = info.Label });
+            text.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = info.Description,
+                FontSize = 11.5,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextFaintBrush"),
+            });
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(glyph);
+            row.Children.Add(text);
+            var b = new Button { Style = (Style)FindResource("MenuItemButtonStyle"), Content = row, Tag = info.Wire };
+            // Driver compat: keep the historical id for the builtin auto mode.
+            System.Windows.Automation.AutomationProperties.SetAutomationId(b, info.Wire == "autocode" ? "ModeFullAccess" : $"Mode_{info.Wire}");
+            b.Click += ModeMenu_Click;
+            ModeListPanel.Children.Add(b);
+        }
+    }
 
     private void ModeMenu_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is string wire)
         {
-            _vm.Mode = AgentModeExtensions.Parse(wire);
             var session = _vm.Active;
-            if (session?.Context is not null)
+            if (session is not null)
             {
-                session.Context = session.Context.WithMode(_vm.Mode);
-                UpdateSessionMeta(session);
+                session.ModeWire = wire;
+                if (session.Context is not null)
+                {
+                    session.Context = session.Context.WithMode(AgentModeExtensions.Parse(wire)).WithModeId(wire);
+                    UpdateSessionMeta(session);
+                }
             }
         }
 
@@ -160,6 +204,20 @@ public partial class MainWindow
 
         var hadConversation = session.Conversation.Count > 0;
         session.AgentId = agentId;
+
+        // Mode/model choices are harness-specific — reset to the new harness's defaults.
+        session.ModeWire = AgentCatalog.DefaultWireFor(agentId);
+        if (agentId == "builtin")
+        {
+            session.Provider = _config.DefaultProvider ?? "anthropic";
+            session.ModelId = _config.DefaultModel ?? "claude-opus-4-7";
+        }
+        else
+        {
+            session.Provider = agentId;
+            session.ModelId = "default";
+        }
+
         WireLoop(session);
         RefreshUsage(session);
         if (hadConversation)
@@ -194,13 +252,33 @@ public partial class MainWindow
 
     private void BuildModelMenu()
     {
-        ModelMenuLabel.Text = $"{Loc.T("Model")} · {_vm.Provider}";
+        var agentId = _vm.Active?.AgentId ?? "builtin";
+        var external = agentId is "claude-code" or "codex";
+
+        // External harnesses pick their own models (aliases / CLI default) — no provider section.
+        ProviderSection.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ModelMenuLabel.Text = external
+            ? $"{Loc.T("Model")} · {MainViewModel.AgentDisplayName(agentId)}"
+            : $"{Loc.T("Model")} · {_vm.Provider}";
+
         ModelListPanel.Children.Clear();
-        foreach (var model in ModelCatalog.ModelsFor(_vm.Provider))
+        if (external)
         {
-            var b = new Button { Style = (Style)FindResource("MenuItemButtonStyle"), Content = model.Label, Tag = model.Id };
-            b.Click += ModelMenu_Click;
-            ModelListPanel.Children.Add(b);
+            foreach (var model in AgentCatalog.ModelsFor(agentId))
+            {
+                var b = new Button { Style = (Style)FindResource("MenuItemButtonStyle"), Content = model.Label, Tag = model.Id };
+                b.Click += ModelMenu_Click;
+                ModelListPanel.Children.Add(b);
+            }
+        }
+        else
+        {
+            foreach (var model in ModelCatalog.ModelsFor(_vm.Provider))
+            {
+                var b = new Button { Style = (Style)FindResource("MenuItemButtonStyle"), Content = model.Label, Tag = model.Id };
+                b.Click += ModelMenu_Click;
+                ModelListPanel.Children.Add(b);
+            }
         }
 
         var custom = new Button { Style = (Style)FindResource("MenuItemButtonStyle"), Content = "Custom…" };
@@ -232,6 +310,13 @@ public partial class MainWindow
 
     private void SaveModelToConfig()
     {
+        // Config defaults seed new BUILTIN sessions; an external session's harness-keyed
+        // provider/model ("claude-code"/"sonnet") must not pollute them.
+        if (_vm.Active is not null && _vm.Active.AgentId != "builtin")
+        {
+            return;
+        }
+
         _config.DefaultProvider = _vm.Provider;
         _config.DefaultModel = _vm.Model;
         _configStore.Save(_config);

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using AutoCode.Engine.Agent;
+using AutoCode.Engine.Backends;
 
 namespace AutoCode.Desktop.ViewModels;
 
@@ -95,7 +96,24 @@ public sealed class MainViewModel : ObservableObject
         if (e.PropertyName == nameof(WorkspaceSession.AgentId))
         {
             Raise(nameof(AgentLabel));
+            RaiseComposerPills();
         }
+
+        if (e.PropertyName is nameof(WorkspaceSession.ModeWire)
+            or nameof(WorkspaceSession.Provider)
+            or nameof(WorkspaceSession.ModelId))
+        {
+            RaiseComposerPills();
+        }
+    }
+
+    private void RaiseComposerPills()
+    {
+        Raise(nameof(Mode));
+        Raise(nameof(ModeWire));
+        Raise(nameof(ModeLabel));
+        Raise(nameof(ModeGlyph));
+        Raise(nameof(ModelLabel));
     }
 
     // ---- Per-session façade (forwards to Active) ----
@@ -210,56 +228,69 @@ public sealed class MainViewModel : ObservableObject
 
     public bool ShowRunBadgeTopbar => (Active?.HasApproval ?? false) && !(PanelOpen && PanelTab == "run");
 
-    // ---- Mode (picker; applied to the active session per turn) ----
-    private AgentMode _mode = AgentMode.Default;
+    // ---- Mode / provider / model (per-session pickers; façade over Active, with fallbacks that
+    // seed the first session before any exists). The mode WIRE is harness-specific (AgentCatalog);
+    // Mode (AgentMode) is the builtin projection existing call sites read. ----
+    private string _fallbackModeWire = "default";
+    private string _fallbackProvider = "anthropic";
+    private string _fallbackModel = "claude-opus-4-7";
+
+    /// <summary>The active session's harness-specific mode wire (raw, e.g. "accept-edits").</summary>
+    public string ActiveModeWire => Active?.ModeWire ?? _fallbackModeWire;
+
     public AgentMode Mode
     {
-        get => _mode;
+        get => AgentModeExtensions.Parse(ActiveModeWire);
         set
         {
-            if (Set(ref _mode, value))
-            {
-                Raise(nameof(ModeWire));
-                Raise(nameof(ModeLabel));
-                Raise(nameof(ModeGlyph));
-            }
+            if (Active is not null) { Active.ModeWire = value.WireName(); }
+            else { _fallbackModeWire = value.WireName(); }
+            RaiseComposerPills();
         }
     }
 
-    public string ModeWire => _mode.WireName();
-
-    public string ModeLabel => _mode switch
+    /// <summary>Color class for the mode pill's Tag: external wires map onto the four builtin
+    /// trigger variants (plan/read-only→planning, auto→autocode, full-access→admin, else default).</summary>
+    public string ModeWire => ActiveModeWire switch
     {
-        AgentMode.Autocode => "Full access",
-        AgentMode.Planning => "Plan only",
-        AgentMode.Admin => "Admin",
-        _ => "Default",
+        "plan" or "read-only" => "planning",
+        "auto" => "autocode",
+        "full-access" => "admin",
+        var w => w,
     };
 
-    public Geometry? ModeGlyph => ResourceGeometry(_mode switch
-    {
-        AgentMode.Autocode => "IconBolt",
-        AgentMode.Planning => "IconPlan",
-        AgentMode.Admin => "IconCrown",
-        _ => "IconShieldCheck",
-    });
+    public string ModeLabel => ModeInfoFor(ActiveModeWire)?.Label ?? "Default";
 
-    // ---- Provider / model (picker) ----
-    private string _provider = "anthropic";
+    public Geometry? ModeGlyph => ResourceGeometry(ModeInfoFor(ActiveModeWire)?.GlyphKey ?? "IconShieldCheck");
+
+    private AgentModeInfo? ModeInfoFor(string wire)
+        => AgentCatalog.ModesFor(Active?.AgentId ?? "builtin").FirstOrDefault(m => m.Wire == wire);
+
     public string Provider
     {
-        get => _provider;
-        set { if (Set(ref _provider, value)) { Raise(nameof(ModelLabel)); } }
+        get => Active?.Provider ?? _fallbackProvider;
+        set
+        {
+            if (Active is not null) { Active.Provider = value; }
+            else { _fallbackProvider = value; }
+            Raise(nameof(ModelLabel));
+        }
     }
 
-    private string _model = "claude-opus-4-7";
     public string Model
     {
-        get => _model;
-        set { if (Set(ref _model, value)) { Raise(nameof(ModelLabel)); } }
+        get => Active?.ModelId ?? _fallbackModel;
+        set
+        {
+            if (Active is not null) { Active.ModelId = value; }
+            else { _fallbackModel = value; }
+            Raise(nameof(ModelLabel));
+        }
     }
 
-    public string ModelLabel => $"{_provider} · {_model}";
+    public string ModelLabel => Active?.AgentId is "claude-code" or "codex"
+        ? $"{AgentDisplayName(Active.AgentId)} · {(Model == "default" ? "Default" : Model)}"
+        : $"{Provider} · {Model}";
 
     // ---- Theme ----
     private string _theme = "light";

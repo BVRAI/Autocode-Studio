@@ -182,7 +182,15 @@ public partial class MainWindow : Window
         }
 
         SaveModelToConfig();
-        session.Context = session.Context.WithMode(modeOverride ?? _vm.Mode).WithModel(new ModelConfig(_vm.Provider, _vm.Model))
+        // Per-session mode/model; a manager dispatch override maps to the member harness's
+        // autonomous wire so an approved task runs without further prompts on any harness.
+        var modeWire = modeOverride is not null
+            ? Engine.Backends.AgentCatalog.AutoWireFor(session.AgentId)
+            : session.ModeWire;
+        session.Context = session.Context
+            .WithMode(modeOverride ?? AgentModeExtensions.Parse(session.ModeWire))
+            .WithModeId(modeWire)
+            .WithModel(new ModelConfig(session.Provider, session.ModelId))
             .WithSystemAppendix(BuildEcosystemBriefing(session));
         UpdateSessionMeta(session);
         UpdateActiveSessionTitle(session, prompt);

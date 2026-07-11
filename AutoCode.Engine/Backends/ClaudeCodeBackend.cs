@@ -71,7 +71,7 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         _cancelled = false;
         _toolNames.Clear();
 
-        var psi = BuildStartInfo(context.ProjectRoot, context.SystemAppendix);
+        var psi = BuildStartInfo(context.ProjectRoot, context.SystemAppendix, context.ModeId, context.Model);
         using var proc = new Process { StartInfo = psi };
         _process = proc;
 
@@ -242,7 +242,7 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         }
     }
 
-    private ProcessStartInfo BuildStartInfo(string workdir, string? systemAppendix)
+    private ProcessStartInfo BuildStartInfo(string workdir, string? systemAppendix, string? modeId, ModelConfig model)
     {
         var psi = new ProcessStartInfo
         {
@@ -271,7 +271,32 @@ public sealed class ClaudeCodeBackend : IAgentBackend
         psi.ArgumentList.Add("--output-format");
         psi.ArgumentList.Add("stream-json");
         psi.ArgumentList.Add("--verbose");
-        psi.ArgumentList.Add("--dangerously-skip-permissions");
+
+        // Mode wire → CLI permission flags (probe-verified). Headless print mode can't pause for
+        // permission prompts, so "manual" isn't offered (needs an approval bridge); "auto" keeps
+        // the original skip-permissions behavior.
+        switch (modeId)
+        {
+            case "plan":
+                psi.ArgumentList.Add("--permission-mode");
+                psi.ArgumentList.Add("plan");
+                break;
+            case "accept-edits":
+                psi.ArgumentList.Add("--permission-mode");
+                psi.ArgumentList.Add("acceptEdits");
+                break;
+            default:
+                psi.ArgumentList.Add("--dangerously-skip-permissions");
+                break;
+        }
+
+        // Model only when the session's model was chosen for THIS harness ("default" = CLI setting).
+        // Aliases (opus/sonnet/haiku) resolve server-side to the latest — no upkeep.
+        if (model.Provider == "claude-code" && !string.IsNullOrWhiteSpace(model.Model) && model.Model != "default")
+        {
+            psi.ArgumentList.Add("--model");
+            psi.ArgumentList.Add(model.Model);
+        }
         if (_claudeSessionId is not null)
         {
             psi.ArgumentList.Add("--resume");

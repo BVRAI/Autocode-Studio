@@ -151,7 +151,8 @@ public partial class MainWindow
             session.AgentId,
             session.Backend?.ResumeId,
             session.Kind,
-            session.EcosystemId));
+            session.EcosystemId,
+            session.ModeWire));
     }
 
     /// <summary>Commit + merge the active session's branch back into its base, then notify.</summary>
@@ -195,14 +196,31 @@ public partial class MainWindow
             Kind = kind,
             EcosystemId = ecosystemId,
         };
+
+        // Seed the per-session pickers: builtin inherits the composer's builtin choices (or config
+        // defaults); external harnesses key the model to themselves ("default" = CLI setting).
+        if (agentId == "builtin")
+        {
+            var inheritBuiltin = _vm.Active?.AgentId == "builtin";
+            session.Provider = inheritBuiltin ? _vm.Provider : _config.DefaultProvider ?? "anthropic";
+            session.ModelId = inheritBuiltin ? _vm.Model : _config.DefaultModel ?? "claude-opus-4-7";
+            session.ModeWire = inheritBuiltin ? _vm.ActiveModeWire : AgentCatalog.DefaultWireFor(agentId);
+        }
+        else
+        {
+            session.Provider = agentId;
+            session.ModelId = "default";
+            session.ModeWire = _vm.Active?.AgentId == agentId ? _vm.ActiveModeWire : AgentCatalog.DefaultWireFor(agentId);
+        }
+
         session.Context = new SessionContext(
             sessionId,
             projectRoot,
             dataDir,
             sessionDir,
-            new ModelConfig(_vm.Provider, _vm.Model),
+            new ModelConfig(session.Provider, session.ModelId),
             session.StartedAt,
-            _vm.Mode);
+            AgentModeExtensions.Parse(session.ModeWire));
 
         WireLoop(session);
         UpdateSessionMeta(session);
@@ -327,6 +345,7 @@ public partial class MainWindow
                 GitBaseBranch = s.GitBaseBranch,
                 AgentId = string.IsNullOrEmpty(s.AgentId) ? "builtin" : s.AgentId,
                 ExternalResumeId = s.ExternalResumeId,
+                ModeWire = s.ModeWire,
             };
             if (node.IsActive) { hasActive = true; }
             var captured = node;
@@ -368,6 +387,19 @@ public partial class MainWindow
         var session = CreateSession(node.Id, node.SessionDir, node.ProjectRoot, node.AgentId);
         session.ChatTitle = string.IsNullOrWhiteSpace(node.Title) ? "Session" : node.Title;
         session.Status = "ready";
+
+        // Restore the session's own mode/model choices (sidecar Model is "provider/model").
+        if (!string.IsNullOrEmpty(node.ModeWire))
+        {
+            session.ModeWire = node.ModeWire;
+        }
+
+        var slash = node.Model.IndexOf('/');
+        if (slash > 0 && slash < node.Model.Length - 1)
+        {
+            session.Provider = node.Model[..slash];
+            session.ModelId = node.Model[(slash + 1)..];
+        }
         if (session.Backend is not null && !string.IsNullOrEmpty(node.ExternalResumeId))
         {
             // External CLI agents continue their own thread (Claude Code session / Codex thread).

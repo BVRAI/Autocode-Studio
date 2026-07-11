@@ -32,7 +32,13 @@ public sealed record SessionContext(
     /// composed by the shell). Null/empty = no extra section. The engine treats it as opaque text.</summary>
     public string? SystemAppendix { get; init; }
 
+    /// <summary>Harness-specific mode wire value (see Backends.AgentCatalog). External CLI backends
+    /// map it to their permission/sandbox flags; the builtin loop uses <see cref="Mode"/> instead.</summary>
+    public string? ModeId { get; init; }
+
     public SessionContext WithMode(AgentMode mode) => this with { Mode = mode };
+
+    public SessionContext WithModeId(string? modeId) => this with { ModeId = modeId };
 
     public SessionContext WithSystemAppendix(string? text) => this with { SystemAppendix = text };
 

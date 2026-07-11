@@ -91,6 +91,7 @@ public sealed class SessionNode : ObservableObject
     public string Model { get; init; } = "";
     public string AgentId { get; init; } = "builtin";
     public string? ExternalResumeId { get; init; }
+    public string? ModeWire { get; init; }
     public DateTimeOffset StartedAt { get; init; }
 
     public string? GitBranch { get; init; }

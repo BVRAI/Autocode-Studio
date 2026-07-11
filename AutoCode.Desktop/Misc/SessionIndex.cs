@@ -21,7 +21,8 @@ public sealed record SessionSidecar(
     string? AgentId = null,
     string? ExternalResumeId = null,
     string? Kind = null,
-    string? EcosystemId = null);
+    string? EcosystemId = null,
+    string? ModeWire = null);
 
 public static class SessionIndex
 {

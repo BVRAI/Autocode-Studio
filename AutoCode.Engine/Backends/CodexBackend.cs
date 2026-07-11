@@ -77,7 +77,7 @@ public sealed class CodexBackend : IAgentBackend
         _cancelled = false;
         _startedItems.Clear();
 
-        var psi = BuildStartInfo(context.ProjectRoot);
+        var psi = BuildStartInfo(context.ProjectRoot, context.ModeId, context.Model);
         using var proc = new Process { StartInfo = psi };
         _process = proc;
 
@@ -295,7 +295,7 @@ public sealed class CodexBackend : IAgentBackend
         return root.TryGetProperty("message", out var m) ? m.GetString() ?? "unknown error" : "unknown error";
     }
 
-    private ProcessStartInfo BuildStartInfo(string workdir)
+    private ProcessStartInfo BuildStartInfo(string workdir, string? modeId, ModelConfig model)
     {
         var psi = new ProcessStartInfo
         {
@@ -325,7 +325,31 @@ public sealed class CodexBackend : IAgentBackend
         psi.ArgumentList.Add(workdir);
         psi.ArgumentList.Add("--json");
         psi.ArgumentList.Add("--skip-git-repo-check");
-        psi.ArgumentList.Add("--dangerously-bypass-approvals-and-sandbox");
+
+        // Mode wire → sandbox policy (probe-verified: --sandbox read-only|workspace-write|
+        // danger-full-access; exec has no --full-auto). Sandbox flags don't change the NDJSON
+        // schema, so the locked parser is unaffected. "full-access" keeps the original bypass.
+        switch (modeId)
+        {
+            case "read-only":
+                psi.ArgumentList.Add("--sandbox");
+                psi.ArgumentList.Add("read-only");
+                break;
+            case "auto":
+                psi.ArgumentList.Add("--sandbox");
+                psi.ArgumentList.Add("workspace-write");
+                break;
+            default:
+                psi.ArgumentList.Add("--dangerously-bypass-approvals-and-sandbox");
+                break;
+        }
+
+        // Model only when chosen for THIS harness ("default" = the CLI's own config).
+        if (model.Provider == "codex" && !string.IsNullOrWhiteSpace(model.Model) && model.Model != "default")
+        {
+            psi.ArgumentList.Add("-m");
+            psi.ArgumentList.Add(model.Model);
+        }
         if (_threadId is not null)
         {
             // Subcommand comes after the exec flags: codex exec [flags] resume <id> <prompt>.
