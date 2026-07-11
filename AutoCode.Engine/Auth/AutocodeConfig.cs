@@ -45,6 +45,11 @@ public sealed class AutocodeConfig
 
     public bool KeepAwakeEnabled { get; set; }
 
+    /// <summary>Master switch for the Ecosystems feature set (grouping, ecosystem chats, manager
+    /// agent). Default off for release — the app reads as a plain multi-agent workbench; flipping
+    /// this true in config.json restores the feature (the registry file on disk is never touched).</summary>
+    public bool EnableEcosystems { get; set; }
+
     /// <summary>When true, the sidebar groups projects under their ecosystem (Phase 2). Off = flat list.</summary>
     public bool GroupByEcosystem { get; set; }
 

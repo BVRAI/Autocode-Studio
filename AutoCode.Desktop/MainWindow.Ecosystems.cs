@@ -22,7 +22,11 @@ public partial class MainWindow
     /// config block and before the first StartNewSession (which triggers the first RebuildSidebar).</summary>
     private void InitEcosystems()
     {
-        _ecosystems = EcosystemIndex.LoadAll();
+        // Release gate: with EnableEcosystems off the registry is simply never loaded, and every
+        // downstream path (sidebar sections, grouping toggle, briefings, report/orchestration
+        // tools, feed tee, @mentions) self-disables through the existing zero-ecosystems dormancy.
+        // The registry file on disk is untouched, so flipping the flag back restores everything.
+        _ecosystems = _config.EnableEcosystems ? EcosystemIndex.LoadAll() : [];
         RebuildEcosystemCache();
     }
 
@@ -281,6 +285,11 @@ public partial class MainWindow
 
     private async Task CreateEcosystemAsync(string? preselectRoot)
     {
+        if (!_config.EnableEcosystems)
+        {
+            return;
+        }
+
         // Candidates: every known project root — saved sessions + live workspaces. Always
         // session.ProjectRoot (the real folder), never Context.ProjectRoot (worktree path).
         var candidates = SessionIndex.LoadAll().Where(s => s.Kind != WorkspaceSession.EcosystemKind).Select(s => s.ProjectRoot)
@@ -320,6 +329,12 @@ public partial class MainWindow
 
     private void ProjectRow_RightClick(object sender, MouseButtonEventArgs e)
     {
+        // The project context menu only serves ecosystem actions; gated off, it never opens.
+        if (!_config.EnableEcosystems)
+        {
+            return;
+        }
+
         if ((sender as FrameworkElement)?.DataContext is not ProjectNode node)
         {
             return;
