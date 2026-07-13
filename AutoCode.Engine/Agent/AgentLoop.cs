@@ -27,6 +27,23 @@ public sealed class AgentLoop
         "edit_file", "write_file", "create_directory", "delete_path"
     };
 
+    // First words that make a shell segment read-only. Anything not on this list (or any output
+    // redirect) is treated as potentially file-mutating so the verify loop fires. Deliberately
+    // conservative — an unnecessary verify run is cheap; a missed mutation escapes the safety net.
+    private static readonly HashSet<string> ReadonlyShellHeads = new(StringComparer.Ordinal)
+    {
+        "ls", "dir", "cat", "type", "head", "tail", "more", "less", "pwd", "cd",
+        "echo", "printf", "which", "where", "whoami", "hostname", "date", "env",
+        "printenv", "grep", "rg", "findstr", "find", "fd", "wc", "uniq", "du",
+        "df", "ps", "tree", "file", "stat", "diff",
+    };
+
+    private static readonly HashSet<string> ReadonlyGitSubcommands = new(StringComparer.Ordinal)
+    {
+        "status", "log", "diff", "show", "branch", "blame", "remote", "describe",
+        "rev-parse", "ls-files", "shortlog", "reflog", "grep",
+    };
+
     private readonly AutocodeConfig _config;
     private readonly TranscriptStore _store;
     private readonly LlmRouter _router;
@@ -99,6 +116,9 @@ public sealed class AgentLoop
     {
         _cancelled = false;
         _checkpoints.BeginTurn();
+        // Rebuild the repo map if last turn's edits made it stale. Turn-boundary (not per-edit) so the
+        // system prompt stays byte-stable within a turn — the digest is part of the cached prefix.
+        ProjectContext.RefreshRepoMapIfStale(context.ProjectRoot);
         _conversation.Add(AgentMessage.User(input));
         _store.AppendTranscript("user", input);
         await EmitAsync(new ChatEvent(DateTimeOffset.Now, "user", input)).ConfigureAwait(false);
@@ -246,7 +266,14 @@ public sealed class AgentLoop
                     prompt.SystemVolatile,
                     _conversation,
                     _registry.Schemas(),
-                    Temperature: context.Temperature ?? 1.0),
+                    // Providers default to 8192 output tokens — too small for large single-file writes.
+                    MaxTokens: ContextWindow.DefaultMaxOutputTokens(context.Model.Model),
+                    Temperature: context.Temperature ?? 1.0,
+                    // Extended thinking when the model supports it (kill switch: AUTOCODE_NO_THINKING=1).
+                    Thinking: ModelCatalog.ThinkingFor(context.Model.Provider, context.Model.Model),
+                    // Server-side context editing at 50% of the window — below the client mask tier (60%),
+                    // so the cache-preserving server path clears first. Ignored by providers without support.
+                    ContextEditing: new ContextEditingConfig((int)(ContextWindow.ContextWindowFor(context.Model.Provider, context.Model.Model) * 0.5))),
                 cancellationToken).ConfigureAwait(false);
 
             totals.Input += response.Usage.InputTokens;
@@ -327,9 +354,23 @@ public sealed class AgentLoop
                     if (FileMutatingTools.Contains(toolUse.Name))
                     {
                         mutated = true;
+                        ProjectContext.InvalidateRepoMap(context.ProjectRoot);
                         foreach (var p in PathsTouched(toolUse.Input))
                         {
                             filesChanged.Add(p);
+                        }
+                    }
+                    else if (toolUse.Name == "run_shell")
+                    {
+                        // Shell commands can change files too (sed -i, codegen, mv, npm install …) — those
+                        // edits must not escape the verify loop. We can't know which files changed, so mark
+                        // the turn mutated unless the command is conservatively read-only. A false positive
+                        // just runs verify once; a false negative skips the safety net entirely.
+                        var cmd = ToolArgs.OptionalString(toolUse.Input, "command") ?? "";
+                        if (!IsReadOnlyShellCommand(cmd))
+                        {
+                            mutated = true;
+                            ProjectContext.InvalidateRepoMap(context.ProjectRoot);
                         }
                     }
                 }
@@ -350,28 +391,41 @@ public sealed class AgentLoop
                 {
                     await EmitPlanAsync(context).ConfigureAwait(false);
                 }
-
-                if (consecutiveFailures.TryGetValue(toolUse.Name, out var failures) && failures >= MaxRetriesPerTool)
-                {
-                    toolResults.Add(new ToolResultBlock(
-                        "retry-cap",
-                        $"`{toolUse.Name}` has failed {failures} times in a row. Stop retrying and try a different approach or ask the user.",
-                        true));
-                    consecutiveFailures[toolUse.Name] = 0;
-                }
             }
 
+            // Harness advisories (loop detection, retry caps) ride in a SEPARATE follow-up user
+            // message as plain text — NOT as tool_result blocks. A tool_result whose id has no
+            // matching tool_use is an API error on Anthropic ("unexpected tool_use_id"), and other
+            // providers translate tool_results into role:"tool" messages that must reference a real
+            // call id. Carried as a blocks message (not string) so it isn't counted as a plain user
+            // turn by the compaction cut.
+            var advisories = new List<string>();
             var loopOffender = DetectLoop(recentToolSigs, LoopDetectThreshold);
             if (loopOffender is not null)
             {
-                toolResults.Add(new ToolResultBlock(
-                    "loop-detected",
-                    $"You have called `{loopOffender}` with the same (or very similar) arguments {LoopDetectThreshold}+ times recently. Stop and reflect: the previous calls likely already gave you the information you need, or the approach is wrong. Summarize what you have learned and propose a different next step. Do not call this tool with these arguments again.",
-                    true));
+                advisories.Add(
+                    $"[harness advisory] You have called `{loopOffender}` with the same (or very similar) arguments {LoopDetectThreshold}+ times recently. " +
+                    "Stop and reflect: the previous calls likely already gave you the information you need, or the approach is wrong. " +
+                    "Summarize what you have learned and propose a different next step. Do not call this tool with these arguments again.");
                 recentToolSigs.Clear();
             }
 
+            foreach (var (tool, count) in consecutiveFailures.ToList())
+            {
+                if (count >= MaxRetriesPerTool)
+                {
+                    advisories.Add(
+                        $"[harness advisory] `{tool}` has failed {count} times in a row. Stop retrying. " +
+                        "Summarize what went wrong and ask the user for guidance, or try a fundamentally different approach.");
+                    consecutiveFailures[tool] = 0;
+                }
+            }
+
             _conversation.Add(AgentMessage.User(toolResults));
+            if (advisories.Count > 0)
+            {
+                _conversation.Add(AgentMessage.User(new List<ContentBlock> { new TextBlock(string.Join("\n\n", advisories)) }));
+            }
         }
 
         await EmitAsync(new StatusEvent(DateTimeOffset.Now, $"stopped after {maxIterations} iterations")).ConfigureAwait(false);
@@ -415,7 +469,9 @@ public sealed class AgentLoop
         var response = await _router.CompleteAsync(
             context.Model.Provider,
             new CompletionRequest(
-                context.Model.Model,
+                // Summarization doesn't need the flagship session model — use the provider's cheap
+                // tier (falls back to the session model when the provider has no cheaper option).
+                ModelCatalog.SummarizerModelFor(context.Model.Provider, context.Model.Model),
                 "You compress coding-assistant conversations. Produce a concise but complete summary that preserves: what the user asked for, key decisions, files created or modified, important findings, and any unfinished work. Use compact bullet points.",
                 null,
                 [AgentMessage.User($"Summarize this conversation excerpt:\n\n{transcript}")],
@@ -522,6 +578,50 @@ public sealed class AgentLoop
         {
             return ToolArgs.Json(input);
         }
+    }
+
+    // True when every segment of the command (split on |, ||, &&, ;) starts with a known read-only
+    // program and there is no output redirect anywhere. Mirrors the TS isReadOnlyShellCommand.
+    internal static bool IsReadOnlyShellCommand(string command)
+    {
+        var cmd = command.Trim();
+        if (cmd.Length == 0)
+        {
+            return true;
+        }
+
+        if (cmd.Contains('>'))
+        {
+            return false; // any redirect can write a file
+        }
+
+        foreach (var segment in System.Text.RegularExpressions.Regex.Split(cmd, @"\|\||&&|;|\|"))
+        {
+            var words = segment.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
+            {
+                continue;
+            }
+
+            var head = words[0].ToLowerInvariant();
+            if (head == "git")
+            {
+                var sub = words.Length > 1 ? words[1].ToLowerInvariant() : "";
+                if (!ReadonlyGitSubcommands.Contains(sub))
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (!ReadonlyShellHeads.Contains(head))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     internal static int MaskOldToolResults(List<AgentMessage> conversation, int keepPairs = 2)

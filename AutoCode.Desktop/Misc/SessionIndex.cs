@@ -22,7 +22,9 @@ public sealed record SessionSidecar(
     string? ExternalResumeId = null,
     string? Kind = null,
     string? EcosystemId = null,
-    string? ModeWire = null);
+    string? ModeWire = null,
+    int InputTokens = 0,
+    int OutputTokens = 0);
 
 public static class SessionIndex
 {

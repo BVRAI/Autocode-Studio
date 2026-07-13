@@ -1,0 +1,146 @@
+<UserControl x:Class="AutoCode.Desktop.Views.Panels.EnvironmentPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:AutoCode.Desktop.Controls"
+             Width="294">
+    <!-- Floating Environment popover. DataContext inherited (MainViewModel façade over the
+         active WorkspaceSession). Changes row is live (opens the docked ChangesPanel); Local /
+         Commit / PR / Sources are visual stubs pending their feature passes. Drag via the grip. -->
+    <UserControl.Resources>
+        <!-- A row: icon + label, hover highlight, full-width, left-aligned. -->
+        <Style x:Key="EnvRowStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="{DynamicResource UiFontFamily}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="14,8">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface3Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                CornerRadius="16" Padding="0,6,0,8" Effect="{DynamicResource MenuShadow}">
+            <StackPanel>
+                <!-- Environment section header -->
+                <Grid Margin="16,3,10,3">
+                    <TextBlock Text="{DynamicResource L_Env_Environment}" FontSize="12.5" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                    <Button HorizontalAlignment="Right" Style="{StaticResource IconButtonStyle}" Width="22" Height="22"
+                            IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                        <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="12" Height="12" Foreground="{DynamicResource Text3Brush}"/>
+                    </Button>
+                </Grid>
+
+                <!-- Changes (live: opens the docked ChangesPanel) -->
+                <Button Style="{StaticResource EnvRowStyle}" Command="{Binding OpenChangesCommand}">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconChangesFile}" Width="16" Height="16" Margin="0,0,11,0" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_Env_Changes}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource Text3Brush}"
+                                   Text="{Binding Changes.Count, StringFormat={}{0} changed}"
+                                   Visibility="{Binding HasChanges, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                </Button>
+
+                <!-- Local (stub) -->
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconLaptop}" Width="16" Height="16" Margin="0,0,11,0" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource L_Env_Local}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" HorizontalAlignment="Right" Width="12" Height="12" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                </Button>
+
+                <!-- branch (live name; only for worktree sessions) -->
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.85"
+                        Visibility="{Binding HasWorktree, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <ctl:IconGlyph Geometry="{StaticResource IconBranch}" Width="16" Height="16" Margin="0,0,11,0" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Branch}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="190"/>
+                        </StackPanel>
+                        <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" HorizontalAlignment="Right" Width="12" Height="12" Foreground="{DynamicResource TextFaintBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                </Button>
+
+                <!-- Commit or push (stub) -->
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph Geometry="{StaticResource IconCommit}" Width="16" Height="16" Margin="0,0,11,0" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource L_Env_Commit}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Create pull request (stub) -->
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph Geometry="{StaticResource IconPullRequest}" Width="16" Height="16" Margin="0,0,11,0" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource L_Env_CreatePr}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Border Height="1" Margin="14,7" Background="{DynamicResource BorderBrush2}"/>
+
+                <!-- Sources section header -->
+                <Grid Margin="16,2,10,3">
+                    <TextBlock Text="{DynamicResource L_Env_Sources}" FontSize="12.5" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                    <Button HorizontalAlignment="Right" Style="{StaticResource IconButtonStyle}" Width="22" Height="22"
+                            IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                        <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="12" Height="12" Foreground="{DynamicResource Text3Brush}"/>
+                    </Button>
+                </Grid>
+
+                <!-- Sources (stub) -->
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph Geometry="{StaticResource IconClipboard}" Width="15" Height="15" Margin="0,0,11,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource L_Env_NoSources}" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource EnvRowStyle}" IsEnabled="False" Opacity="0.5" ToolTipService.ShowOnDisabled="True" ToolTip="{DynamicResource L_ComingSoon}">
+                    <StackPanel Orientation="Horizontal">
+                        <ctl:IconGlyph Geometry="{StaticResource IconLink}" Width="15" Height="15" Margin="0,0,11,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource L_Env_ViewAll}" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- drag grip (left edge) -->
+        <Thumb x:Name="Grip" HorizontalAlignment="Left" VerticalAlignment="Center" DragDelta="Grip_DragDelta" Cursor="SizeAll">
+            <Thumb.Template>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="Transparent" Padding="4,6">
+                        <StackPanel VerticalAlignment="Center">
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,3" Fill="{DynamicResource TextFaintBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Thumb.Template>
+        </Thumb>
+    </Grid>
+</UserControl>

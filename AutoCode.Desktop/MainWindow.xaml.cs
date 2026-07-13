@@ -40,6 +40,7 @@ public partial class MainWindow : Window
         _vm.ActivateSessionCommand = new RelayCommand(p => { if (p is WorkspaceSession s) ActivateWorkspace(s); });
         _vm.CloseSessionCommand = new RelayCommand(p => { if (p is WorkspaceSession s) CloseWorkspace(s); });
         _vm.OpenEcosystemChatCommand = new RelayCommand(p => { if (p is EcosystemNode n) OpenEcosystemChatFromNode(n); });
+        _vm.OpenChangesCommand = new RelayCommand(_ => OpenPanel("changes"));
         InlineParser.FileRefRequested += OnFileRefRequested;
         _firebase.StateChanged += () => Dispatcher.Invoke(RefreshAccountUi);
     }
@@ -232,10 +233,9 @@ public partial class MainWindow : Window
             RefreshUsage(session);
             RefreshFiles(session);
 
-            // External CLI agents get their continuity handle (Claude session / Codex thread id)
-            // during the first turn — after the sidecar was written. Re-persist so reopen resumes.
-            if (session.Backend?.ResumeId is not null
-                && System.IO.File.Exists(System.IO.Path.Combine(session.SessionDir, "session.json")))
+            // Re-persist the sidecar after each turn (once the session has one on disk) so the running
+            // usage total — and any external-agent resume handle acquired this turn — survive reopen.
+            if (System.IO.File.Exists(System.IO.Path.Combine(session.SessionDir, "session.json")))
             {
                 WriteSidecar(session);
             }

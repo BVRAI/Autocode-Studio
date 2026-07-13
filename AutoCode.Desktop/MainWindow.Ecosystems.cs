@@ -197,7 +197,9 @@ public partial class MainWindow
                 kind: WorkspaceSession.EcosystemKind, ecosystemId: eco.Id);
             reopened.ChatTitle = string.IsNullOrWhiteSpace(sc.Title) ? eco.Name : sc.Title;
             reopened.Status = "ready";
-            RehydrateTranscript(reopened);
+            reopened.RestoredInputBaseline = sc.InputTokens;
+            reopened.RestoredOutputBaseline = sc.OutputTokens;
+            RehydrateConversation(reopened);
             _vm.Sessions.Activate(reopened);
             RebuildSidebar(reopened.Id);
             RefreshUsage(reopened);

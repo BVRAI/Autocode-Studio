@@ -10,6 +10,8 @@ public sealed class AnthropicProvider : ILlmProvider
 {
     private const string DefaultBaseUrl = "https://api.anthropic.com/v1";
     private const string ApiVersion = "2023-06-01";
+    // Server-side context editing (clear stale tool results after cache lookup).
+    private const string ContextManagementBeta = "context-management-2025-06-27";
     private static readonly HttpClient Http = new();
     private readonly AuthMode _auth;
 
@@ -28,10 +30,16 @@ public sealed class AnthropicProvider : ILlmProvider
         }
 
         var baseUrl = _auth.Kind == AuthKind.Proxy ? _auth.BaseUrl! : DefaultBaseUrl;
+        var contextManagement = ContextManagementParam(request);
         using var http = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/messages");
-        http.Content = new StringContent(BuildBody(request).ToJsonString(), Encoding.UTF8, "application/json");
+        http.Content = new StringContent(BuildBody(request, contextManagement).ToJsonString(), Encoding.UTF8, "application/json");
         http.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         http.Headers.TryAddWithoutValidation("anthropic-version", ApiVersion);
+        if (contextManagement is not null)
+        {
+            http.Headers.TryAddWithoutValidation("anthropic-beta", ContextManagementBeta);
+        }
+
         if (_auth.Kind == AuthKind.Byok)
         {
             http.Headers.TryAddWithoutValidation("x-api-key", _auth.ApiKey);
@@ -51,7 +59,7 @@ public sealed class AnthropicProvider : ILlmProvider
         return ParseResponse(text);
     }
 
-    private static JsonObject BuildBody(CompletionRequest request)
+    internal static JsonObject BuildBody(CompletionRequest request, JsonObject? contextManagement)
     {
         var system = new JsonArray
         {
@@ -91,15 +99,115 @@ public sealed class AnthropicProvider : ILlmProvider
             messages.Add(ToAnthropicMessage(message));
         }
 
-        return new JsonObject
+        WithRollingCacheBreakpoint(messages);
+
+        // With thinking enabled, max_tokens must EXCEED the budget (keep ≥8K visible output beyond it),
+        // and Anthropic requires temperature 1.
+        int? thinkingBudget = request.Thinking is { BudgetTokens: > 0 } t ? Math.Max(1024, t.BudgetTokens) : null;
+
+        var body = new JsonObject
         {
             ["model"] = request.Model,
-            ["max_tokens"] = request.MaxTokens,
-            ["temperature"] = request.Temperature,
+            ["max_tokens"] = thinkingBudget is int b ? Math.Max(request.MaxTokens, b + 8192) : request.MaxTokens,
+            ["temperature"] = thinkingBudget is not null ? 1.0 : request.Temperature,
             ["system"] = system,
             ["tools"] = tools,
             ["messages"] = messages
         };
+        if (thinkingBudget is int budget)
+        {
+            body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget };
+        }
+
+        if (contextManagement is not null)
+        {
+            body["context_management"] = contextManagement;
+        }
+
+        return body;
+    }
+
+    private JsonObject? ContextManagementParam(CompletionRequest request)
+    {
+        // Server-side tool-result clearing after cache lookup — preserves the cached prefix (unlike
+        // client-side masking). BYOK-only: the proxy isn't verified to forward the beta header, and
+        // sending context_management without it 400s.
+        if (request.ContextEditing is null || request.ContextEditing.TriggerInputTokens <= 0)
+        {
+            return null;
+        }
+
+        if (_auth.Kind != AuthKind.Byok)
+        {
+            return null;
+        }
+
+        return new JsonObject
+        {
+            ["edits"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "clear_tool_uses_20250919",
+                    ["trigger"] = new JsonObject { ["type"] = "input_tokens", ["value"] = request.ContextEditing.TriggerInputTokens },
+                    ["keep"] = new JsonObject { ["type"] = "tool_uses", ["value"] = 5 },
+                    ["clear_at_least"] = new JsonObject { ["type"] = "input_tokens", ["value"] = 2_000 }
+                }
+            }
+        };
+    }
+
+    // Attach a rolling cache breakpoint to the last cacheable block of the last message so the whole
+    // conversation prefix caches turn-over-turn — the system + last-tool breakpoints only cache the
+    // fixed prefix. Uses the 3rd of Anthropic's 4 allowed breakpoints. Thinking blocks can't carry
+    // cache_control, so skip past them.
+    internal static void WithRollingCacheBreakpoint(JsonArray messages)
+    {
+        for (var i = messages.Count - 1; i >= 0; i--)
+        {
+            if (messages[i] is not JsonObject m)
+            {
+                continue;
+            }
+
+            var contentNode = m["content"];
+            if (contentNode is JsonValue value && value.TryGetValue<string>(out var s))
+            {
+                if (string.IsNullOrEmpty(s))
+                {
+                    continue;
+                }
+
+                m["content"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "text",
+                        ["text"] = s,
+                        ["cache_control"] = new JsonObject { ["type"] = "ephemeral" }
+                    }
+                };
+                return;
+            }
+
+            if (contentNode is JsonArray arr)
+            {
+                for (var j = arr.Count - 1; j >= 0; j--)
+                {
+                    if (arr[j] is not JsonObject block)
+                    {
+                        continue;
+                    }
+
+                    var type = block["type"]?.GetValue<string>();
+                    if (type != "thinking" && type != "redacted_thinking")
+                    {
+                        block["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     private static JsonObject ToAnthropicMessage(AgentMessage message)

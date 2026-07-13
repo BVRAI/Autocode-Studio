@@ -152,7 +152,9 @@ public partial class MainWindow
             session.Backend?.ResumeId,
             session.Kind,
             session.EcosystemId,
-            session.ModeWire));
+            session.ModeWire,
+            session.TotalInputTokens,
+            session.TotalOutputTokens));
     }
 
     /// <summary>Commit + merge the active session's branch back into its base, then notify.</summary>
@@ -346,6 +348,8 @@ public partial class MainWindow
                 AgentId = string.IsNullOrEmpty(s.AgentId) ? "builtin" : s.AgentId,
                 ExternalResumeId = s.ExternalResumeId,
                 ModeWire = s.ModeWire,
+                InputTokens = s.InputTokens,
+                OutputTokens = s.OutputTokens,
             };
             if (node.IsActive) { hasActive = true; }
             var captured = node;
@@ -383,10 +387,13 @@ public partial class MainWindow
             return;
         }
 
-        // Cold open: build it and rehydrate the conversation + engine context from the transcript.
+        // Cold open: build it and rebuild the rendered chat + engine context from the saved event log.
         var session = CreateSession(node.Id, node.SessionDir, node.ProjectRoot, node.AgentId);
         session.ChatTitle = string.IsNullOrWhiteSpace(node.Title) ? "Session" : node.Title;
         session.Status = "ready";
+        // Restore the running usage total from the sidecar so the Context meter isn't blank on reopen.
+        session.RestoredInputBaseline = node.InputTokens;
+        session.RestoredOutputBaseline = node.OutputTokens;
 
         // Restore the session's own mode/model choices (sidecar Model is "provider/model").
         if (!string.IsNullOrEmpty(node.ModeWire))
@@ -416,7 +423,7 @@ public partial class MainWindow
             UpdateSessionMeta(session);
         }
 
-        RehydrateTranscript(session);
+        RehydrateConversation(session);
 
         _vm.Sessions.Activate(session);
         RebuildSidebar(node.Id);
@@ -426,9 +433,35 @@ public partial class MainWindow
         ScrollChatToEnd();
     }
 
-    /// <summary>Replay a session's saved transcript into its backend history + conversation bubbles.</summary>
-    private void RehydrateTranscript(WorkspaceSession session)
+    /// <summary>
+    /// Rebuild a reopened session's rendered chat. When a replayable event log exists (events.jsonl),
+    /// replay it through the SAME builders the live path uses — reconstructing user/assistant text,
+    /// tool groups, diff cards, notices, the timeline and the plan — then feed the engine its text
+    /// history for continuity. Sessions saved before the event log existed fall back to the
+    /// transcript-only text bubbles.
+    /// </summary>
+    private void RehydrateConversation(WorkspaceSession session)
     {
+        if (SessionEventLog.Exists(session.SessionDir))
+        {
+            var events = SessionEventLog.Load(session.SessionDir);
+            foreach (var evt in events)
+            {
+                // The session isn't Active yet (Activate runs after this), so the builders'
+                // IsActiveSession guards suppress scroll / panel auto-open. No persistence and no
+                // ecosystem tee on replay — DispatchEvent does neither.
+                DispatchEvent(session, evt);
+            }
+
+            // Close any "Working…" group left open by an interrupted final turn.
+            FinalizeWorked(session);
+
+            // Engine continuity: same text-only history shape as before, derived from the chat events.
+            session.Backend?.LoadHistory(events.OfType<ChatEvent>().Select(e => (e.Role, e.Text)).ToList());
+            return;
+        }
+
+        // Fallback — sessions created before the event log existed: transcript.jsonl text bubbles only.
         var history = SessionIndex.LoadTranscript(session.SessionDir);
         session.Backend?.LoadHistory(history);
         foreach (var (role, text) in history)
@@ -557,13 +590,7 @@ public partial class MainWindow
         // [1m] long-context variant, per-provider families, etc.). Don't re-derive it here.
         var model = session.Context?.Model;
         var window = model is null ? 200_000 : ContextWindow.ContextWindowFor(model.Provider, model.Model);
-        if (session.Backend is null)
-        {
-            session.SetUsage(0, 0, window);
-            return;
-        }
-
-        var usage = session.Backend.CumulativeUsage;
-        session.SetUsage(usage.InputTokens, usage.OutputTokens, window);
+        // Totals fold in any usage restored from a prior run (baseline) plus this process's backend usage.
+        session.SetUsage(session.TotalInputTokens, session.TotalOutputTokens, window);
     }
 }

@@ -106,6 +106,14 @@ public sealed class WorkspaceSession : ObservableObject
 
     public bool HasWorktree => !string.IsNullOrEmpty(_branch);
 
+    private bool _showEnvironmentPanel = true;
+    /// <summary>Whether the floating Environment popover is shown for this session.</summary>
+    public bool ShowEnvironmentPanel
+    {
+        get => _showEnvironmentPanel;
+        set => Set(ref _showEnvironmentPanel, value);
+    }
+
     // ---- conversation / timeline / files / plan ----
     public ObservableCollection<ConversationBlock> Conversation { get; } = [];
     public ObservableCollection<TimelineItemVM> Timeline { get; } = [];
@@ -228,6 +236,13 @@ public sealed class WorkspaceSession : ObservableObject
     private int _inputTokens;
     private int _outputTokens;
     private int _contextWindow = 200_000;
+
+    // Usage carried over from prior process runs, restored on reopen. The backend's CumulativeUsage only
+    // counts THIS process's turns, so the true running total (shown + persisted) is baseline + it.
+    public int RestoredInputBaseline { get; set; }
+    public int RestoredOutputBaseline { get; set; }
+    public int TotalInputTokens => RestoredInputBaseline + (Backend?.CumulativeUsage.InputTokens ?? 0);
+    public int TotalOutputTokens => RestoredOutputBaseline + (Backend?.CumulativeUsage.OutputTokens ?? 0);
 
     public void SetUsage(int input, int output, int contextWindow)
     {

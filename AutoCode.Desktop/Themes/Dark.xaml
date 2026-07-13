@@ -7,6 +7,9 @@
     <SolidColorBrush x:Key="TitlebarBrush" Color="#26241f"/>
     <SolidColorBrush x:Key="TitlebarTextBrush" Color="#cdc8be"/>
 
+    <!-- Window body (behind the floating main-pane card) -->
+    <SolidColorBrush x:Key="WindowBg" Color="#202020"/>
+
     <!-- Surfaces -->
     <SolidColorBrush x:Key="SurfaceBrush" Color="#1c1b19"/>
     <SolidColorBrush x:Key="Surface2Brush" Color="#201f1c"/>
@@ -30,9 +33,18 @@
     <SolidColorBrush x:Key="CodeBgBrush" Color="#2a2823"/>
     <SolidColorBrush x:Key="CodeTextBrush" Color="#d6d1c7"/>
 
-    <!-- Accent (soft/line precomputed; base accent lives in Tokens.Shared) -->
+    <!-- Accent (per-theme; dark uses the design's lighter #5b93f5) -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#5b93f5"/>
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#212F49"/>
     <SolidColorBrush x:Key="AccentLineBrush" Color="#254173"/>
+    <LinearGradientBrush x:Key="LogoChipBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#5b93f5" Offset="0"/>
+        <GradientStop Color="#7d68f0" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="UsageBarFillBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#5b93f5" Offset="0"/>
+        <GradientStop Color="#7d68f0" Offset="1"/>
+    </LinearGradientBrush>
 
     <!-- Semantic -->
     <SolidColorBrush x:Key="GreenBrush" Color="#1a7f47"/>

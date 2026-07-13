@@ -35,6 +35,10 @@ public sealed record ThinkingBlock(
 
 public sealed record ToolSchema(string Name, string Description, JsonNode InputSchema);
 
+public sealed record ThinkingConfig(int BudgetTokens);
+
+public sealed record ContextEditingConfig(int TriggerInputTokens);
+
 public sealed record CompletionRequest(
     string Model,
     string System,
@@ -42,7 +46,15 @@ public sealed record CompletionRequest(
     IReadOnlyList<AgentMessage> Messages,
     IReadOnlyList<ToolSchema> Tools,
     int MaxTokens = 8192,
-    double Temperature = 1.0);
+    double Temperature = 1.0,
+    // Request extended thinking / reasoning. Providers map it natively: Anthropic
+    // thinking:{type:enabled,budget_tokens} (forces temperature 1); OpenAI o-series & gpt-5 family
+    // reasoning_effort. Null → provider default (off).
+    ThinkingConfig? Thinking = null,
+    // Ask the provider to clear stale tool results SERVER-SIDE once the prompt crosses the trigger
+    // (Anthropic context-management beta; applied after cache lookup, so unlike client-side masking it
+    // does NOT bust the prompt cache). Providers without support ignore it — client tiers remain the fallback.
+    ContextEditingConfig? ContextEditing = null);
 
 public sealed record CompletionUsage(
     int InputTokens,

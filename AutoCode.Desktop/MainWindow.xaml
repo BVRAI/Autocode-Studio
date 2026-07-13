@@ -220,26 +220,54 @@
         </Grid.RowDefinitions>
 
         <!-- ============================= TITLE BAR ============================= -->
-        <Border Grid.Row="0" Background="{DynamicResource TitlebarBrush}"
-                BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource WindowBg}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Image Source="pack://application:,,,/AutoCode.Desktop;component/Assets/bvrai-logo-black.png"
-                           Width="23" Height="23" VerticalAlignment="Center"
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="AutoCode Studio" Margin="8,0,0,0" VerticalAlignment="Center"
-                               FontSize="12.5" FontWeight="Medium" Foreground="{DynamicResource TitlebarTextBrush}"/>
+                <!-- left: sidebar toggle + back/forward (back/fwd inert stubs) + menu bar -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource TitleNavButtonStyle}" Click="SidebarToggle_Click" ToolTip="{DynamicResource L_Tooltip_ToggleSidebar}">
+                        <ctl:IconGlyph Geometry="{StaticResource IconPanelLeft}" Width="17" Height="17"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleNavButtonStyle}" IsEnabled="False" ToolTip="Back">
+                        <ctl:IconGlyph Geometry="{StaticResource IconArrowLeft}" Width="15" Height="15"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleNavButtonStyle}" IsEnabled="False" ToolTip="Forward">
+                        <ctl:IconGlyph Geometry="{StaticResource IconArrowRight}" Width="15" Height="15"/>
+                    </Button>
+                    <Menu Style="{StaticResource TitleMenuStyle}" Margin="4,0,0,0" VerticalAlignment="Center">
+                        <MenuItem Header="{DynamicResource L_Menu_File}">
+                            <MenuItem Header="{DynamicResource L_NewSession}" Click="NewSession_Click"/>
+                            <MenuItem Header="{DynamicResource L_Settings}" Click="SettingsButton_Click"/>
+                            <Separator/>
+                            <MenuItem Header="{DynamicResource L_Menu_Exit}" Click="CloseWindow_Click"/>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource L_Menu_Edit}">
+                            <MenuItem Header="{DynamicResource L_Menu_Cut}" Command="Cut"/>
+                            <MenuItem Header="{DynamicResource L_Menu_Copy}" Command="Copy"/>
+                            <MenuItem Header="{DynamicResource L_Menu_Paste}" Command="Paste"/>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource L_Menu_View}">
+                            <MenuItem Header="{DynamicResource L_Tooltip_ToggleTheme}" Click="ThemeToggle_Click"/>
+                            <MenuItem Header="{DynamicResource L_Menu_TextSize}" Click="FontSizeToggle_Click"/>
+                            <MenuItem Header="{DynamicResource L_Menu_KeepAwake}" Click="KeepAwakeToggle_Click"/>
+                            <Separator/>
+                            <MenuItem Header="{DynamicResource L_Tooltip_ToggleSidebar}" Click="SidebarToggle_Click"/>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource L_Menu_Help}">
+                            <MenuItem Header="{DynamicResource L_About}" Click="AboutMenu_Click"/>
+                        </MenuItem>
+                    </Menu>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
 
-                    <!-- ===== toggle cluster: theme · font size · keep-awake ===== -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <!-- toggle cluster (theme/font/keep-awake) collapsed — relocated into the View menu -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" Visibility="Collapsed">
 
                         <!-- theme -->
                         <Button Style="{StaticResource TitleToggleStyle}" VerticalAlignment="Center"
@@ -395,7 +423,7 @@
         </Border>
 
         <!-- ============================= BODY ============================= -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Background="{DynamicResource WindowBg}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SidebarCol" Width="262"/>
                 <ColumnDefinition Width="*"/>
@@ -403,8 +431,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- ===== SIDEBAR ===== -->
-            <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource Surface2Brush}"
-                    BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,1,0" ClipToBounds="True">
+            <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource WindowBg}" ClipToBounds="True">
                 <Grid Width="262" HorizontalAlignment="Left">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -412,23 +439,63 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- top -->
-                    <StackPanel Margin="12,12,12,6">
-                        <Button Style="{StaticResource NewSessionButtonStyle}" Click="NewSession_Click" AutomationProperties.AutomationId="NewSessionButton">
-                            <StackPanel Orientation="Horizontal">
-                                <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="16" Height="16" Margin="0,0,9,0"/>
-                                <TextBlock Text="{DynamicResource L_NewSession}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource SidebarItemStyle}" Margin="0,2,0,0" Click="SearchToggle_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <ctl:IconGlyph Geometry="{StaticResource IconSearch}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
-                                <TextBlock Text="{DynamicResource L_Search}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <TextBox x:Name="SearchBox" Visibility="Collapsed" Margin="0,4,0,0" Padding="8,5"
+                    <!-- top: brand + primary nav -->
+                    <StackPanel Margin="8,10,8,4">
+                        <!-- brand + search -->
+                        <Grid Margin="8,2,2,8">
+                            <TextBlock Text="AutoCode Studio" FontSize="14.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            <Button HorizontalAlignment="Right" Style="{StaticResource IconButtonStyle}" Width="28" Height="28"
+                                    Click="SearchToggle_Click" ToolTip="{DynamicResource L_Search}">
+                                <ctl:IconGlyph Geometry="{StaticResource IconSearch}" Width="16" Height="16" Foreground="{DynamicResource Text3Brush}"/>
+                            </Button>
+                        </Grid>
+                        <TextBox x:Name="SearchBox" Visibility="Collapsed" Margin="0,0,0,4" Padding="8,5"
                                  Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
                                  Foreground="{DynamicResource TextBrush}" FontSize="13" TextChanged="SearchBox_TextChanged"/>
+
+                        <!-- New task (live) -->
+                        <Button Style="{StaticResource SidebarItemStyle}" Click="NewSession_Click" AutomationProperties.AutomationId="NewSessionButton">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconEditBox}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="{DynamicResource L_Nav_NewTask}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Scheduled / Plugins / Sites / Pull requests — inert stubs (not built yet) -->
+                        <Button Style="{StaticResource SidebarItemStyle}" Opacity="0.45" Cursor="Arrow" ToolTip="{DynamicResource L_ComingSoon}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconClock}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="{DynamicResource L_Nav_Scheduled}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SidebarItemStyle}" Opacity="0.45" Cursor="Arrow" ToolTip="{DynamicResource L_ComingSoon}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconPlug}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="{DynamicResource L_Nav_Plugins}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SidebarItemStyle}" Opacity="0.45" Cursor="Arrow" ToolTip="{DynamicResource L_ComingSoon}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconGrid}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="{DynamicResource L_Nav_Sites}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SidebarItemStyle}" Opacity="0.45" Cursor="Arrow" ToolTip="{DynamicResource L_ComingSoon}">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconPullRequest}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                <TextBlock Text="{DynamicResource L_Nav_PullRequests}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Chat — inert stub with the design's notification dot -->
+                        <Button Style="{StaticResource SidebarItemStyle}" Opacity="0.45" Cursor="Arrow" ToolTip="{DynamicResource L_ComingSoon}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <ctl:IconGlyph Geometry="{StaticResource IconChat}" Width="16" Height="16" Margin="0,0,9,0" Foreground="{DynamicResource Text3Brush}"/>
+                                    <TextBlock Text="{DynamicResource L_Nav_Chat}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            </Grid>
+                        </Button>
                     </StackPanel>
 
                     <!-- scroll: projects -->
@@ -595,23 +662,36 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
-                                <Button x:Name="SettingsButton" Style="{StaticResource SidebarItemStyle}" Margin="0,8,0,0" Click="SettingsButton_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <!-- Gear borrowed from Automax V6 (Segoe MDL2 Assets E713) for ecosystem parity. -->
-                                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Width="16"
-                                                   TextAlignment="Center" Margin="0,0,9,0" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource Text3Brush}"/>
-                                        <TextBlock Text="{DynamicResource L_Settings}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
+                                <!-- account row: avatar + identity + settings gear -->
+                                <Grid Margin="2,10,0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource LogoChipBrush}">
+                                        <TextBlock Text="{Binding AccountInitial}" FontSize="10.5" FontWeight="SemiBold" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding AccountEmail}" Margin="9,0,6,0" VerticalAlignment="Center"
+                                               FontSize="12.5" FontWeight="Medium" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <Button Grid.Column="2" x:Name="SettingsButton" Style="{StaticResource IconButtonStyle}" Width="28" Height="28"
+                                            Click="SettingsButton_Click" ToolTip="{DynamicResource L_Settings}">
+                                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="15" TextAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                                    </Button>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- ===== MAIN COLUMN ===== -->
-            <Grid Grid.Column="1" Background="{DynamicResource SurfaceBrush}">
+            <!-- ===== MAIN COLUMN (content) — flush under the header; sidebar's right border is the divider ===== -->
+            <!-- Divider lives on the card's left+top edges (not the sidebar's right) so it follows the rounded corner. -->
+            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="12,0,0,0" Margin="0"
+                    BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1,1,0,0" ClipToBounds="True">
+            <Grid Background="Transparent">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="52"/>
                     <RowDefinition Height="*"/>
@@ -620,27 +700,37 @@
 
                 <!-- top bar -->
                 <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,0,0,1">
-                    <Grid Margin="8,0,12,0">
+                    <Grid Margin="14,0,10,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>  <!-- title -->
+                            <ColumnDefinition Width="Auto"/>  <!-- overflow dots -->
+                            <ColumnDefinition Width="*"/>     <!-- spacer -->
+                            <ColumnDefinition Width="Auto"/>  <!-- project pill -->
+                            <ColumnDefinition Width="Auto"/>  <!-- VS Code -->
+                            <ColumnDefinition Width="Auto"/>  <!-- plan -->
+                            <ColumnDefinition Width="Auto"/>  <!-- dock bottom -->
+                            <ColumnDefinition Width="Auto"/>  <!-- dock right -->
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Style="{StaticResource IconButtonStyle}" Click="SidebarToggle_Click" ToolTip="{DynamicResource L_Tooltip_ToggleSidebar}">
-                            <ctl:IconGlyph Geometry="{StaticResource IconMenu}" Width="18" Height="18"/>
-                        </Button>
-
-                        <Grid Grid.Column="1" DataContext="{Binding Active}" Background="Transparent" VerticalAlignment="Center" Margin="6,0,0,0" PreviewMouseLeftButtonDown="HeaderTitle_PreviewMouseLeftButtonDown">
+                        <Grid Grid.Column="0" DataContext="{Binding Active}" Background="Transparent" VerticalAlignment="Center" PreviewMouseLeftButtonDown="HeaderTitle_PreviewMouseLeftButtonDown">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
+                            <!-- folder glyph for normal sessions (hidden for ecosystem chats) -->
+                            <ctl:IconGlyph Grid.Column="0" Geometry="{StaticResource IconFolder}" Width="16" Height="16" Margin="0,0,9,0"
+                                           Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center">
+                                <ctl:IconGlyph.Style>
+                                    <Style TargetType="ctl:IconGlyph" BasedOn="{StaticResource {x:Type ctl:IconGlyph}}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Kind}" Value="ecosystem">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ctl:IconGlyph.Style>
+                            </ctl:IconGlyph>
                             <!-- Ecosystem chat marker tile (design spec §3): 26×26 AccentSoft + cube. -->
                             <Border Grid.Column="0" Width="26" Height="26" CornerRadius="7" Margin="0,0,8,0" VerticalAlignment="Center"
                                     Background="{DynamicResource AccentSoftBrush}">
@@ -687,8 +777,14 @@
                             </TextBlock>
                         </Grid>
 
+                        <!-- overflow menu (right after title) -->
+                        <Button Grid.Column="1" x:Name="SessionMenuButton" Style="{StaticResource IconButtonStyle}" Width="30" Height="30" Margin="4,0,0,0"
+                                Click="SessionMenu_Click" ToolTip="{DynamicResource L_Tooltip_SessionMenu}">
+                            <ctl:IconGlyph Geometry="{StaticResource IconDots}" Width="17" Height="17" Filled="True"/>
+                        </Button>
+
                         <Button Grid.Column="3" x:Name="ChooseProjectButton" AutomationProperties.AutomationId="ChooseProjectButton"
-                                Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,8,0"
+                                Style="{StaticResource PillButtonStyle}" Click="ChooseProject_Click" Margin="0,0,6,0"
                                 ToolTip="{Binding ProjectRoot}">
                             <StackPanel Orientation="Horizontal">
                                 <ctl:IconGlyph Geometry="{StaticResource IconFolder}" Width="14" Height="14" Margin="0,0,7,0" Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"/>
@@ -696,21 +792,34 @@
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="4" x:Name="WorkspaceToggle" Style="{StaticResource IconButtonStyle}" Click="WorkspaceToggle_Click" ToolTip="{DynamicResource L_Tooltip_Workspace}">
-                            <ctl:IconGlyph Geometry="{StaticResource IconPanel}" Width="18" Height="18"/>
+                        <!-- open in editor (VS Code) — inert stub -->
+                        <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" IsEnabled="False" Opacity="0.4"
+                                ToolTipService.ShowOnDisabled="True" ToolTip="Open in editor (coming soon)">
+                            <StackPanel Orientation="Horizontal">
+                                <ctl:IconGlyph Geometry="{StaticResource IconVscode}" Width="17" Height="17" Filled="True"/>
+                                <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="9" Height="9" Margin="3,0,0,0" Foreground="{DynamicResource Text3Brush}"/>
+                            </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="5" x:Name="RunToggle" Style="{StaticResource IconButtonStyle}" Click="RunToggle_Click" ToolTip="{DynamicResource L_Tooltip_Run}">
+                        <!-- plan / todo panel -->
+                        <Button Grid.Column="5" x:Name="PlanToggle" Style="{StaticResource IconButtonStyle}" Click="PlanToggle_Click" ToolTip="{DynamicResource L_Tab_Plan}">
+                            <ctl:IconGlyph Geometry="{StaticResource IconListChecks}" Width="18" Height="18"/>
+                        </Button>
+
+                        <!-- dock bottom — inert stub -->
+                        <Button Grid.Column="6" Style="{StaticResource IconButtonStyle}" IsEnabled="False" Opacity="0.4"
+                                ToolTipService.ShowOnDisabled="True" ToolTip="Dock bottom (coming soon)">
+                            <ctl:IconGlyph Geometry="{StaticResource IconPanelBottom}" Width="18" Height="18"/>
+                        </Button>
+
+                        <!-- dock right — the workspace/run/plan/changes panel (+ run badge) -->
+                        <Button Grid.Column="7" x:Name="WorkspaceToggle" Style="{StaticResource IconButtonStyle}" Click="WorkspaceToggle_Click" ToolTip="{DynamicResource L_Tooltip_Workspace}">
                             <Grid>
-                                <ctl:IconGlyph Geometry="{StaticResource IconTerminal}" Width="18" Height="18"/>
+                                <ctl:IconGlyph Geometry="{StaticResource IconPanelRight}" Width="18" Height="18"/>
                                 <Ellipse Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"
                                          Fill="{DynamicResource AmberBrush}" Stroke="{DynamicResource SurfaceBrush}" StrokeThickness="1.5"
                                          Visibility="{Binding ShowRunBadgeTopbar, Converter={StaticResource BoolToVis}}"/>
                             </Grid>
-                        </Button>
-
-                        <Button Grid.Column="6" x:Name="SessionMenuButton" Style="{StaticResource IconButtonStyle}" Click="SessionMenu_Click" ToolTip="{DynamicResource L_Tooltip_SessionMenu}">
-                            <ctl:IconGlyph Geometry="{StaticResource IconDots}" Width="18" Height="18" Filled="True"/>
                         </Button>
                     </Grid>
                 </Border>
@@ -718,7 +827,18 @@
                 <!-- conversation -->
                 <ScrollViewer Grid.Row="1" x:Name="ChatScroll" VerticalScrollBarVisibility="Auto">
                     <Grid>
-                        <ItemsControl x:Name="ChatItems" ItemsSource="{Binding Conversation}" MaxWidth="760" HorizontalAlignment="Stretch" Margin="28,26,28,8">
+                        <ItemsControl x:Name="ChatItems" ItemsSource="{Binding Conversation}" MaxWidth="760" HorizontalAlignment="Stretch">
+                            <ItemsControl.Style>
+                                <Style TargetType="ItemsControl">
+                                    <!-- reserve room on the right for the floating Environment popover -->
+                                    <Setter Property="Margin" Value="28,26,28,8"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ShowEnvironmentPanel}" Value="True">
+                                            <Setter Property="Margin" Value="28,26,300,8"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ItemsControl.Style>
                             <ItemsControl.ItemContainerStyle>
                                 <Style TargetType="ContentPresenter">
                                     <Setter Property="Margin" Value="0,0,0,18"/>
@@ -727,6 +847,14 @@
                         </ItemsControl>
                     </Grid>
                 </ScrollViewer>
+
+                <!-- floating Environment popover (overlays the conversation, top-right; drag via grip) -->
+                <panels:EnvironmentPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,14,0"
+                                         Visibility="{Binding ShowEnvironmentPanel, Converter={StaticResource BoolToVis}}">
+                    <panels:EnvironmentPanel.RenderTransform>
+                        <TranslateTransform X="{Binding EnvPanelOffsetX}" Y="{Binding EnvPanelOffsetY}"/>
+                    </panels:EnvironmentPanel.RenderTransform>
+                </panels:EnvironmentPanel>
 
                 <!-- composer -->
                 <Grid Grid.Row="2" Margin="16,8,16,16">
@@ -775,22 +903,24 @@
                                             Click="AgentPill_Click" ToolTip="{DynamicResource L_Tooltip_Agent}">
                                         <ctl:IconGlyph Geometry="{StaticResource IconPlus}" Width="18" Height="18"/>
                                     </Button>
+                                    <!-- approval mode ("Approve for me"-style) — check-circle + current mode label -->
                                     <Button x:Name="ModePill" AutomationProperties.AutomationId="ModePill" Style="{StaticResource PillButtonStyle}" Tag="{Binding ModeWire}" Margin="7,0,0,0" Click="ModePill_Click">
                                         <StackPanel Orientation="Horizontal">
-                                            <ctl:IconGlyph Geometry="{Binding ModeGlyph}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <ctl:IconGlyph Geometry="{StaticResource IconCheckCircle}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding ModeLabel}" VerticalAlignment="Center"/>
-                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button x:Name="ModelPill" Style="{StaticResource PillButtonStyle}" Margin="7,0,0,0" Click="ModelPill_Click">
-                                        <StackPanel Orientation="Horizontal">
-                                            <ctl:IconGlyph Geometry="{StaticResource IconCube}" Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
-                                            <TextBlock Text="{Binding ModelLabel}" VerticalAlignment="Center"/>
                                             <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <!-- model + (effort tier, later) selector -->
+                                    <Button x:Name="ModelPill" Style="{StaticResource PillButtonStyle}" Margin="0,0,7,0" Click="ModelPill_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ctl:IconGlyph Geometry="{StaticResource IconBolt}" Width="14" Height="14" Filled="True" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="{Binding ModelLabel}" VerticalAlignment="Center"/>
+                                            <ctl:IconGlyph Geometry="{StaticResource IconChevronDown}" Width="12" Height="12" Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Text3Brush}"/>
+                                        </StackPanel>
+                                    </Button>
                                     <Button x:Name="MicButton" AutomationProperties.AutomationId="MicButton" Click="MicButton_Click"
                                             ToolTip="{Binding VoiceTooltip}">
                                         <Button.Style>
@@ -823,6 +953,7 @@
                     </Border>
                 </Grid>
             </Grid>
+            </Border>
 
             <!-- ===== SIDE PANEL ===== -->
             <Border x:Name="SidePanel" Grid.Column="2" Background="{DynamicResource Surface2Brush}"

@@ -95,6 +95,14 @@ public sealed class OpenAiCompatProvider : ILlmProvider
             body["temperature"] = request.Temperature;
         }
 
+        // Arm reasoning when requested, for the families that accept the param (o-series, gpt-5).
+        // Others (grok, llama routes) never see it — the catalog doesn't mark them SupportsThinking,
+        // so request.Thinking is null for them.
+        if (request.Thinking is not null && (IsOpenAiReasoningModel(request.Model) || IsGpt5Model(request.Model)))
+        {
+            body["reasoning_effort"] = "medium";
+        }
+
         if (request.Tools.Count > 0)
         {
             var tools = new JsonArray();
@@ -317,6 +325,9 @@ public sealed class OpenAiCompatProvider : ILlmProvider
 
     private static bool IsOpenAiReasoningModel(string model) =>
         System.Text.RegularExpressions.Regex.IsMatch(model, @"^(openai/)?o\d", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static bool IsGpt5Model(string model) =>
+        System.Text.RegularExpressions.Regex.IsMatch(model, @"^(openai/)?gpt-5", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     private static string NormalizeStopReason(string? raw) =>
         raw switch

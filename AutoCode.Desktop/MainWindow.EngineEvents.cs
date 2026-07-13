@@ -19,50 +19,63 @@ public partial class MainWindow
 
     private async Task EmitAsync(WorkspaceSession session, AgentEvent evt)
     {
+        // Persist the rendered-chat event stream (off the UI thread, in emission order) so reopening the
+        // session can replay it into the same blocks. Non-persisted kinds (StatusEvent) are ignored inside.
+        Misc.SessionEventLog.Append(session.SessionDir, evt);
+
         await Dispatcher.InvokeAsync(() =>
         {
-            switch (evt)
-            {
-                case ChatEvent { Role: "user" } userChat:
-                    // Engine echoes the user turn; we already added a bubble on submit. Skip duplicates.
-                    if (session.Conversation.LastOrDefault() is not UserBubbleBlock)
-                    {
-                        session.Conversation.Add(new UserBubbleBlock { Text = userChat.Text });
-                    }
-                    break;
-
-                case ChatEvent chat:
-                    FinalizeWorked(session);
-                    session.Conversation.Add(new AssistantBlock { Text = chat.Text });
-                    session.PendingDiff = null;
-                    if (IsActiveSession(session)) { ScrollChatToEnd(); }
-                    break;
-
-                case StatusEvent status:
-                    session.Status = status.Text;
-                    break;
-
-                case ToolCallEvent call:
-                    OnToolCall(session, call);
-                    break;
-
-                case ToolResultEvent result:
-                    OnToolResult(session, result);
-                    RefreshUsage(session);
-                    break;
-
-                case VerificationEvent verification:
-                    OnVerification(session, verification);
-                    break;
-
-                case PlanEvent plan:
-                    SetPlan(session, plan.Items);
-                    break;
-            }
+            DispatchEvent(session, evt);
 
             // Mirror member activity into its ecosystem chat's feed (no-op unless that chat is open).
             TeeToEcosystemFeed(session, evt);
         });
+    }
+
+    // Apply one event to a session's conversation/timeline/plan. Shared by the live path (EmitAsync) and
+    // the reopen replay (RehydrateConversation) — must run on the UI thread. Persistence and ecosystem
+    // mirroring are the caller's concern, NOT here, so replay can reuse this without re-writing the log.
+    private void DispatchEvent(WorkspaceSession session, AgentEvent evt)
+    {
+        switch (evt)
+        {
+            case ChatEvent { Role: "user" } userChat:
+                // Engine echoes the user turn; the composer already added a bubble on submit. Skip
+                // duplicates. (On replay there is no pre-added bubble, so this adds it.)
+                if (session.Conversation.LastOrDefault() is not UserBubbleBlock)
+                {
+                    session.Conversation.Add(new UserBubbleBlock { Text = userChat.Text });
+                }
+                break;
+
+            case ChatEvent chat:
+                FinalizeWorked(session);
+                session.Conversation.Add(new AssistantBlock { Text = chat.Text });
+                session.PendingDiff = null;
+                if (IsActiveSession(session)) { ScrollChatToEnd(); }
+                break;
+
+            case StatusEvent status:
+                session.Status = status.Text;
+                break;
+
+            case ToolCallEvent call:
+                OnToolCall(session, call);
+                break;
+
+            case ToolResultEvent result:
+                OnToolResult(session, result);
+                RefreshUsage(session);
+                break;
+
+            case VerificationEvent verification:
+                OnVerification(session, verification);
+                break;
+
+            case PlanEvent plan:
+                SetPlan(session, plan.Items);
+                break;
+        }
     }
 
     // Rebuild the live plan/todo checklist for a session. Reveals the Plan tab the first time a plan

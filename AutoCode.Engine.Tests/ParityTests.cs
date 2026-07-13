@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using AutoCode.Engine.Agent;
 using AutoCode.Engine.Llm;
 using AutoCode.Engine.Session;
@@ -260,6 +262,160 @@ public sealed class ParityTests
 
         Assert.IsTrue(result.IsError);
         Assert.IsFalse(File.Exists(Path.Combine(t.Root, "broken.json")));
+    }
+
+    // ---------- Output-token cap (defaultMaxOutputTokens) ----------
+
+    [TestMethod]
+    public void DefaultMaxOutputTokens_ByFamily()
+    {
+        Assert.AreEqual(32_000, ContextWindow.DefaultMaxOutputTokens("claude-opus-4-7"));
+        Assert.AreEqual(32_000, ContextWindow.DefaultMaxOutputTokens("gpt-4.1"));
+        Assert.AreEqual(32_000, ContextWindow.DefaultMaxOutputTokens("o4-mini"));
+        Assert.AreEqual(16_384, ContextWindow.DefaultMaxOutputTokens("grok-code-fast-1"));
+        Assert.AreEqual(16_384, ContextWindow.DefaultMaxOutputTokens("some-unknown-model"));
+    }
+
+    // ---------- Extended-thinking resolution ----------
+
+    [TestMethod]
+    public void ThinkingFor_OnlyThinkingModels()
+    {
+        var thinking = ModelCatalog.ThinkingFor("anthropic", "claude-opus-4-7");
+        Assert.IsNotNull(thinking);
+        Assert.AreEqual(8_192, thinking!.BudgetTokens);
+        Assert.IsNotNull(ModelCatalog.ThinkingFor("openai", "o4-mini"));
+        Assert.IsNull(ModelCatalog.ThinkingFor("openai", "gpt-4.1"));       // not marked SupportsThinking
+        Assert.IsNull(ModelCatalog.ThinkingFor("xai", "grok-code-fast-1")); // reasons unconditionally, no param
+    }
+
+    [TestMethod]
+    public void ThinkingFor_LongestPrefixVariant()
+        => Assert.IsNotNull(ModelCatalog.ThinkingFor("anthropic", "claude-opus-4-7-20251001"));
+
+    // ---------- Cheap summarizer ----------
+
+    [TestMethod]
+    public void SummarizerModelFor_CheapTierWithFallback()
+    {
+        Assert.AreEqual("claude-haiku-4-5", ModelCatalog.SummarizerModelFor("anthropic", "claude-opus-4-7"));
+        Assert.AreEqual("grok-code-fast-1", ModelCatalog.SummarizerModelFor("xai", "grok-4"));
+        // No cheaper bundled option for openrouter → keep the session model.
+        Assert.AreEqual("anthropic/claude-opus-4-7", ModelCatalog.SummarizerModelFor("openrouter", "anthropic/claude-opus-4-7"));
+    }
+
+    // ---------- Read-only shell classification (verify gating) ----------
+
+    [TestMethod]
+    public void IsReadOnlyShellCommand_Classifies()
+    {
+        Assert.IsTrue(AgentLoop.IsReadOnlyShellCommand("ls -la"));
+        Assert.IsTrue(AgentLoop.IsReadOnlyShellCommand("git status"));
+        Assert.IsTrue(AgentLoop.IsReadOnlyShellCommand("cat a.txt | grep foo"));
+        Assert.IsFalse(AgentLoop.IsReadOnlyShellCommand("echo hi > out.txt"));  // redirect can write
+        Assert.IsFalse(AgentLoop.IsReadOnlyShellCommand("npm install"));
+        Assert.IsFalse(AgentLoop.IsReadOnlyShellCommand("git checkout ."));     // mutating git subcommand
+        Assert.IsFalse(AgentLoop.IsReadOnlyShellCommand("rm -rf build"));
+    }
+
+    // ---------- Anthropic rolling cache breakpoint ----------
+
+    [TestMethod]
+    public void RollingCacheBreakpoint_MarksLastBlockOfLastMessage()
+    {
+        var messages = new JsonArray
+        {
+            new JsonObject { ["role"] = "user", ["content"] = "hello" },
+            new JsonObject
+            {
+                ["role"] = "assistant",
+                ["content"] = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = "hi" } }
+            }
+        };
+
+        AnthropicProvider.WithRollingCacheBreakpoint(messages);
+
+        var lastBlock = messages[1]!["content"]!.AsArray()[0]!.AsObject();
+        Assert.IsTrue(lastBlock.ContainsKey("cache_control"));
+        // The earlier message is untouched — only ONE rolling breakpoint is placed.
+        Assert.AreEqual(JsonValueKind.String, messages[0]!["content"]!.GetValueKind());
+    }
+
+    [TestMethod]
+    public void RollingCacheBreakpoint_SkipsThinkingBlock()
+    {
+        var messages = new JsonArray
+        {
+            new JsonObject
+            {
+                ["role"] = "assistant",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject { ["type"] = "text", ["text"] = "reasoned answer" },
+                    new JsonObject { ["type"] = "thinking", ["thinking"] = "…" }
+                }
+            }
+        };
+
+        AnthropicProvider.WithRollingCacheBreakpoint(messages);
+
+        var blocks = messages[0]!["content"]!.AsArray();
+        Assert.IsTrue(blocks[0]!.AsObject().ContainsKey("cache_control"));   // text block gets it
+        Assert.IsFalse(blocks[1]!.AsObject().ContainsKey("cache_control"));  // thinking block skipped
+    }
+
+    [TestMethod]
+    public void RollingCacheBreakpoint_ConvertsStringContent()
+    {
+        var messages = new JsonArray { new JsonObject { ["role"] = "user", ["content"] = "just text" } };
+
+        AnthropicProvider.WithRollingCacheBreakpoint(messages);
+
+        var content = messages[0]!["content"]!.AsArray();
+        Assert.AreEqual("just text", content[0]!["text"]!.GetValue<string>());
+        Assert.IsTrue(content[0]!.AsObject().ContainsKey("cache_control"));
+    }
+
+    // ---------- Anthropic thinking request body ----------
+
+    [TestMethod]
+    public void AnthropicBody_ThinkingOn_ForcesTempAndBumpsMaxTokens()
+    {
+        var req = new CompletionRequest("claude-opus-4-7", "sys", null, [], [],
+            MaxTokens: 8_192, Temperature: 0.3, Thinking: new ThinkingConfig(8_192));
+
+        var body = AnthropicProvider.BuildBody(req, null);
+
+        Assert.AreEqual("enabled", body["thinking"]!["type"]!.GetValue<string>());
+        Assert.AreEqual(8_192, body["thinking"]!["budget_tokens"]!.GetValue<int>());
+        // max_tokens must exceed the budget by ≥8K → max(8192, 8192+8192) = 16384.
+        Assert.AreEqual(16_384, body["max_tokens"]!.GetValue<int>());
+        // Anthropic requires temperature 1 when thinking is on.
+        Assert.AreEqual(1.0, body["temperature"]!.GetValue<double>());
+    }
+
+    [TestMethod]
+    public void AnthropicBody_ThinkingBudgetFloor_Is1024()
+    {
+        var req = new CompletionRequest("claude-opus-4-7", "sys", null, [], [],
+            Thinking: new ThinkingConfig(500));
+
+        var body = AnthropicProvider.BuildBody(req, null);
+
+        Assert.AreEqual(1024, body["thinking"]!["budget_tokens"]!.GetValue<int>());
+    }
+
+    [TestMethod]
+    public void AnthropicBody_ThinkingOff_PreservesTemperature()
+    {
+        var req = new CompletionRequest("grok-code-fast-1", "sys", null, [], [],
+            MaxTokens: 16_384, Temperature: 0.3, Thinking: null);
+
+        var body = AnthropicProvider.BuildBody(req, null);
+
+        Assert.IsNull(body["thinking"]);
+        Assert.AreEqual(0.3, body["temperature"]!.GetValue<double>());
+        Assert.AreEqual(16_384, body["max_tokens"]!.GetValue<int>());
     }
 
     private static ToolExecutionContext Context(TempDir t) =>

@@ -7,9 +7,10 @@
          Colors that change per theme live in Light.xaml / Dark.xaml.
          ============================================================ -->
 
-    <!-- Fonts: Geist -> Segoe UI Variable / Segoe UI ; Geist Mono -> Cascadia -->
-    <FontFamily x:Key="UiFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
-    <FontFamily x:Key="MonoFontFamily">Cascadia Code, Cascadia Mono, Consolas</FontFamily>
+    <!-- Fonts: bundled Geist / Geist Mono (Assets/Fonts, static weight instances), system fallbacks after.
+         Relative component URI (not full pack://) so the comma-separated fallback list parses. -->
+    <FontFamily x:Key="UiFontFamily">/AutoCode.Desktop;component/Assets/Fonts/#Geist, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="MonoFontFamily">/AutoCode.Desktop;component/Assets/Fonts/#Geist Mono, Cascadia Code, Cascadia Mono, Consolas</FontFamily>
 
     <!-- Body text size. Scaled at runtime by the title-bar font toggle (ApplyTextScale
          sets Application.Current.Resources["BodyFontSize"] = 14.5 * scale). -->
@@ -24,8 +25,9 @@
     <CornerRadius x:Key="RadiusIcon">9</CornerRadius>
     <CornerRadius x:Key="RadiusChip">6</CornerRadius>
 
-    <!-- Accent is constant across themes -->
-    <SolidColorBrush x:Key="AccentBrush" Color="#2f6fe0"/>
+    <!-- AccentInk (text on accent) + close-hover are constant across themes.
+         AccentBrush and the accent gradients (LogoChip / UsageBarFill) now live per-theme
+         in Light.xaml / Dark.xaml so dark mode can use a lighter accent (#5b93f5). -->
     <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff"/>
     <SolidColorBrush x:Key="CloseHoverBrush" Color="#e5443b"/>
 
@@ -34,15 +36,7 @@
     <SolidColorBrush x:Key="EditableBrush" Color="#FFFDE7"/>
     <SolidColorBrush x:Key="EditableInkBrush" Color="#1a1a1a"/>
 
-    <!-- Accent gradients (logo chip, usage bar) -->
-    <LinearGradientBrush x:Key="LogoChipBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="#2f6fe0" Offset="0"/>
-        <GradientStop Color="#6d54e0" Offset="1"/>
-    </LinearGradientBrush>
-    <LinearGradientBrush x:Key="UsageBarFillBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#2f6fe0" Offset="0"/>
-        <GradientStop Color="#6d54e0" Offset="1"/>
-    </LinearGradientBrush>
+    <!-- Accent gradients (LogoChip / UsageBarFill) moved to Light.xaml / Dark.xaml. -->
 
     <!-- Shadows -->
     <DropShadowEffect x:Key="WindowShadow" BlurRadius="48" ShadowDepth="14" Direction="270" Opacity="0.32" Color="#282622"/>

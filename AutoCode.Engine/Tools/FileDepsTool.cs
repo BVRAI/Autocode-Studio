@@ -31,11 +31,19 @@ public sealed class FileDepsTool : ITool
         var abs = PathSafety.ResolveInsideRoot(context.Session.ProjectRoot, rawPath);
         var rel = PathSafety.ToRelative(context.Session.ProjectRoot, abs).Replace('\\', '/');
         var graph = ProjectContext.GetImportGraph(context.Session.ProjectRoot);
+        if (!graph.Imports.ContainsKey(rel) && File.Exists(abs))
+        {
+            // Exists on disk but not in the graph — most likely created after the last scan (the map
+            // refreshes at turn boundaries). Rebuild once and retry so freshly-written files answer.
+            ProjectContext.ForceRefreshRepoMap(context.Session.ProjectRoot);
+            graph = ProjectContext.GetImportGraph(context.Session.ProjectRoot);
+        }
+
         if (!graph.Imports.ContainsKey(rel))
         {
             return Task.FromResult(new ToolResult(
                 $"not in import graph: {rel}",
-                $"{rel} is not in the scanned import graph. Possible reasons: unsupported file type, inside an ignored directory, beyond the scan cap on a very large repo, or created after this session started. Use grep/find_symbol for files outside the graph.",
+                $"{rel} is not in the scanned import graph. Possible reasons: unsupported file type, inside an ignored directory (node_modules etc.), or beyond the scan cap on a very large repo. Use grep/find_symbol for files outside the graph.",
                 true));
         }
 

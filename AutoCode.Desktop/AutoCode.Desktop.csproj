@@ -21,6 +21,8 @@
     <Resource Include="Assets\bvrai-logo.ico" />
     <Resource Include="Assets\automax-light.ico" />
     <Resource Include="Assets\automax-light.png" />
+    <!-- Bundled Geist + Geist Mono (static weight instances; OFL). -->
+    <Resource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

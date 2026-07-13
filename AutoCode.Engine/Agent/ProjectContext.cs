@@ -14,6 +14,10 @@ public static class ProjectContext
     private const int MaxReadBytes = 64_000;
     private const double PhaseOneBudgetFraction = 0.75;
     private static readonly Dictionary<string, RepoMapData> RepoMapCache = new(StringComparer.OrdinalIgnoreCase);
+    // Roots whose files changed since their map was built. The rebuild is deferred to a turn
+    // boundary (see RefreshRepoMapIfStale) — the digest is part of the cached system-prompt prefix,
+    // so rebuilding between iterations would bust the provider prompt cache within a single turn.
+    private static readonly HashSet<string> DirtyRoots = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> SourceExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
@@ -38,6 +42,42 @@ public static class ProjectContext
 
     public static ImportGraph GetImportGraph(string root)
         => GetRepoMapInfo(root).Graph;
+
+    /// <summary>Mark a root's map stale (a file was created/edited/deleted). Cheap — the rebuild happens at the next turn boundary.</summary>
+    public static void InvalidateRepoMap(string root)
+    {
+        var full = Path.GetFullPath(root);
+        if (RepoMapCache.ContainsKey(full))
+        {
+            DirtyRoots.Add(full);
+        }
+    }
+
+    /// <summary>
+    /// Rebuild a stale map. Called at TURN boundaries (AgentLoop.SubmitAsync), not per-edit: the
+    /// digest is part of the cached system-prompt prefix, so rebuilding between iterations would bust
+    /// the provider prompt cache repeatedly within a single turn. Returns true when a rebuild happened.
+    /// </summary>
+    public static bool RefreshRepoMapIfStale(string root)
+    {
+        var full = Path.GetFullPath(root);
+        if (!DirtyRoots.Contains(full))
+        {
+            return false;
+        }
+
+        DirtyRoots.Remove(full);
+        RepoMapCache[full] = BuildRepoMapInfo(full);
+        return true;
+    }
+
+    /// <summary>Unconditional rebuild — so a freshly-created file appears immediately (e.g. file_deps retry).</summary>
+    public static void ForceRefreshRepoMap(string root)
+    {
+        var full = Path.GetFullPath(root);
+        DirtyRoots.Remove(full);
+        RepoMapCache[full] = BuildRepoMapInfo(full);
+    }
 
     private static RepoMapData GetRepoMapInfo(string root)
     {

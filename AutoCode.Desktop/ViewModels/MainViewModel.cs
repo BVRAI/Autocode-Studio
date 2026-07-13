@@ -48,6 +48,13 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand? ActivateSessionCommand { get; set; }
     public RelayCommand? CloseSessionCommand { get; set; }
     public RelayCommand? OpenEcosystemChatCommand { get; set; }
+    public RelayCommand? OpenChangesCommand { get; set; }
+
+    // ---- Floating Environment popover drag offset (app-level UX preference) ----
+    private double _envPanelOffsetX;
+    public double EnvPanelOffsetX { get => _envPanelOffsetX; set => Set(ref _envPanelOffsetX, value); }
+    private double _envPanelOffsetY;
+    public double EnvPanelOffsetY { get => _envPanelOffsetY; set => Set(ref _envPanelOffsetY, value); }
 
     // Transient text for the approval "revise" box (bound two-way from the Run panel).
     private string _revisionText = "";
@@ -151,6 +158,7 @@ public sealed class MainViewModel : ObservableObject
     public string? Branch => Active?.Branch;
     public string? BaseBranch => Active?.BaseBranch;
     public bool HasWorktree => Active?.HasWorktree ?? false;
+    public bool ShowEnvironmentPanel => Active?.ShowEnvironmentPanel ?? false;
     public bool IsPreparing => Active?.IsPreparing ?? false;
     public string UsagePercentText => Active?.UsagePercentText ?? "0% used";
     public string UsageInText => Active?.UsageInText ?? "0";

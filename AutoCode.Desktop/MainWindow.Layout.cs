@@ -18,6 +18,8 @@ public partial class MainWindow
 
     private void RunToggle_Click(object sender, RoutedEventArgs e) => TogglePanel("run");
 
+    private void PlanToggle_Click(object sender, RoutedEventArgs e) => TogglePanel("plan");
+
     private void ClosePanel_Click(object sender, RoutedEventArgs e) => ClosePanel();
 
     private void WorkspaceTab_Click(object sender, RoutedEventArgs e) => _vm.PanelTab = "workspace";
@@ -66,7 +68,7 @@ public partial class MainWindow
     private void UpdateToggleStates()
     {
         WorkspaceToggle.Tag = _vm.PanelOpen && _vm.PanelTab == "workspace";
-        RunToggle.Tag = _vm.PanelOpen && _vm.PanelTab == "run";
+        PlanToggle.Tag = _vm.PanelOpen && _vm.PanelTab == "plan";
     }
 
     private void AnimateColumn(ColumnDefinition col, double to, Duration duration)
